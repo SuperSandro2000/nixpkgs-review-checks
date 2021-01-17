@@ -35,12 +35,34 @@ nixpkgs-review() {
           return
         fi
 
-        if [[ -z $(git diff --name-only 2>&1) ]]; then
-          command nixpkgs-review "$@" && exit
-        else
+        if [[ -n $(git diff --name-only 2>&1) ]]; then
           echo "There are unstaged files. Not leaving as long they are present!"
           return
+        else
+          cd ..
         fi
+
+        # discard reports without any summary which means no packages where build
+        if [[ -z $(rg -co summary report.md) ]]; then
+          echo -e "Report does not contain any \u001b[36summary\u001b[0m. Discarding."
+          return
+        fi
+
+        local author blocklist
+        author=$(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .user.login)
+        # hexa -> mweinelt; qyliss -> alyssais
+        blocklist=("alyssais" "andir" "mweinelt")
+
+        # users which requested to not receive build confirmations
+        # shellcheck disable=SC2076
+        if [[ " ${blocklist[*]} " =~ " $author " ]]; then
+          if ! rg failed report.md &>/dev/null; then
+            echo -e "Report does not contain any \u001b[36mfailed\u001b[0m builds. Discarding."
+            return
+          fi
+        fi
+
+        command nixpkgs-review "$@" && exit
       else
         command nixpkgs-review "$@"
       fi
