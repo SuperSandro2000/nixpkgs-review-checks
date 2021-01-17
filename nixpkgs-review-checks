@@ -1,0 +1,325 @@
+#!/usr/bin/env cached-nix-shell
+#!nix-shell -i bash -p bloaty curl gawk gnused hydra-check mdcat jq pup ripgrep
+# shellcheck shell=bash
+set -eou pipefail
+
+tb() {
+  nc termbin.com 9999
+}
+
+nixpkgs-hammer() {
+  if [[ -e ${NIXPKGS_HAMMER_BIN:-} ]]; then
+    $NIXPKGS_HAMMER_BIN "$@"
+  else
+    nix run -f "${NIXPKGS_HAMMER_ARCHIVE:-https://github.com/jtojnar/nixpkgs-hammering/archive/master.tar.gz}" -c nixpkgs-hammer "$@"
+  fi
+}
+
+if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
+  lint_check=lint_checks.tmp
+  report=report.md
+
+  # save or restore a backup of original report for debugging
+  if [[ -f $report.orig ]]; then
+    cp "$report.orig" "$report"
+  else
+    cp "$report" "$report.orig"
+  fi
+
+  summaries_before=$(rg -co summary "$report")
+  (
+    # run commands for each package build
+    cd logs/ 2>/dev/null || exit
+    for package_log in *.log; do
+      prepend_package_name=false
+      package="${package_log%.*}"
+      lint_check_package=../lint_checks.$package.tmp
+
+      # error: package 'ccacheStdenv' has no source location information
+      if [[ $package == ccacheStdenv ]]; then
+        continue
+      fi
+
+      package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package")"
+
+      # check logs for common errors and display it
+      # shellcheck disable=SC2016
+      rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'Ran 0 tests in 0.000s' -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log" &
+
+      # check default.nix of the package for common errors and display it
+      rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'rev = "\$\{version\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' "$package_nix_file" &
+
+      if rg --ignore-case -e 'Ran 0 tests in 0.000s' "$package_log"; then
+        prepend_package_name=true
+        cat <<EOF >>"$lint_check_package"
+Zero tests run by pytest got detected: 'Ran 0 tests in 0.000s'
+You have the following options to fix this:
+  - Tell pytest(CheckHook) where to find the tests included in the package
+  - Check if the GitHub Repo contains tests but they are not shipped with Pypi. If so please switch to \`fetchFromGitHub\`.
+  - If the Packages does not contain any tests add \'doCheck = false;'\` and a \`pythonImportsCheck\`.
+
+EOF
+      fi
+
+      if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' "$package_nix_file"; then
+        prepend_package_name=true
+        cat <<EOF >>"$lint_check_package"
+A typo in pythonImportsCheck got detected.
+
+EOF
+      fi
+
+      if rg --ignore-case -e 'rev = "\$\{version\}";' "$package_nix_file"; then
+        prepend_package_name=true
+        cat <<EOF >>"$lint_check_package"
+An avoidable string conversion got detected: \`rev = "\${version}";\`
+Please do not convert version to a string if you do not prepend a string like \`v\`.
+
+EOF
+      fi
+
+      substituteCheck="$(rg --ignore-case -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log" || true)"
+      if [[ -n $substituteCheck ]]; then
+        prepend_package_name=true
+        cat <<EOF >>"$lint_check_package"
+Please consider this feature to be alpha.
+
+A substituteInPlace with an unused --replace got detected:
+\`\`\`
+$substituteCheck
+\`\`\`
+
+Please check the offending substituteInPlace for typos or changes in source.
+EOF
+      fi
+
+      # nixpkgs-hammer
+      # tail removes "When evaluating attribute ..."
+      # sed removes color escape codes, adds markdown code fences and replaced home path
+      hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g")"
+
+      # small delay required by nixpkgs-hammer or it errors
+      sleep 0.1
+
+      if [[ -n $hammer_out && $hammer_out =~ No\ issues\ found. ]]; then
+        if [[ ! $hammer_out =~ is\ a\ deprecated\ license && ! $hammer_out =~ No\ issues\ found. ]]; then
+          echo "$hammer_out"
+        fi
+      else
+        # for each warning in $hammer_out, also strips them
+        # replaces the warning line with a null byte
+        # || [[ -n $warning ]] is required to display the last warning without appending a null byte
+        echo "$hammer_out" | sed -E -e "s/warning: [a-z-]+/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
+          if [[ $warning =~ is\ a\ deprecated\ license && ! $hammer_out =~ licenses\.[a-z]+[2|3]Only ]]; then
+            prepend_package_name=true
+            echo "$hammer_out" >>"$lint_check_package"
+          fi
+        done
+      fi
+
+      if [[ $prepend_package_name == "true" ]]; then
+        {
+          cat <<EOF
+$package:
+<details>
+
+EOF
+          cat "$lint_check_package"
+          echo "</details>"
+        } >>"../$lint_check"
+        rm "$lint_check_package"
+      fi
+    done
+
+    # run commands for output in result(s)
+    if [[ -d ../result ]]; then
+      result_dir="result*"
+    elif [[ -d ../results ]]; then
+      result_dir="results/*"
+    else
+      echo "No Results directory found"
+    fi
+
+    is_object() {
+      local binary=$1
+      [[ ! -f $binary && ! "$(file --brief --mime-type "$binary")" =~ ^text/.* ]]
+    }
+
+    check_binary() {
+      local binary=$1
+
+      # if symlink or text file
+      if ! is_object "$binary"; then
+        return
+      fi
+
+      if [[ $OSTYPE =~ darwin || $(uname) == Darwin ]]; then
+        otool -L "$binary" | tail -n +2 | awk '{print $1}' | while read -r object; do
+          if [[ ! -f $object ]]; then
+            echo "Missing object found in: $binary $object"
+          fi
+        done
+      else
+        # shellcheck disable=SC2015
+        ldd "$binary" | rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" "not found" && echo "Missing object found in: $binary" || true
+      fi
+    }
+
+    if [[ -n ${result_dir:-} ]]; then
+      for result in ../$result_dir; do
+        if [[ -d "$result"/bin/ ]]; then
+          for binary in "$result"/bin/*; do
+            check_binary "$binary" &
+            # shellcheck disable=SC2015
+            if is_object "$binary"; then
+              bloaty "$binary" | rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" debug && echo "Bloaty found an unstripped binary: $binary" || true &
+            fi
+          done
+        fi
+
+        if compgen -G "$result"/lib/*.so.* >/dev/null; then
+          for binary in "$result"/lib/*.so.*; do
+            check_binary "$binary" &
+          done
+        fi
+
+        if compgen -G "$result"/libexec/* >/dev/null; then
+          for binary in "$result"/libexec/*; do
+            check_binary "$binary" &
+          done
+        fi
+      done
+    fi
+  )
+
+  # run hydra-check on build failures and resort to show regressions clearly
+  (
+    summaries_plus=0
+
+    cat <<EOF >"$report.tmp"
+This is a semi-automatic executed nixpkgs-review which does not build all packages (e.g. lumo, tensorflow or pytorch)
+If you find some bugs or got suggestions for further things to search or run please reach out to SuperSandro2000 on IRC.
+
+EOF
+    head -1 "$report" >>"$report.tmp"
+
+    for state in "marked as broken and skipped" "present in ofBorgs evaluation, but not found in the checkout" "blacklisted" "failed to build" "built"; do
+      case $state in
+        "failed to build")
+          arch=$(nix-instantiate --eval --json --expr builtins.currentSystem | jq -r)
+          packages_to_check=$(tail -n +2 "$report" | pup -i 0 ':parent-of(:contains("failed to build")) ul li text{}')
+          packages_fail_on_master=()
+          packages_fail_new=()
+
+          for package in $packages_to_check; do
+            state_on_master=$(hydra-check --arch="$arch" --channel=master --json "$package" | jq ."package"[0].success || echo skip)
+            if [[ $state_on_master == true ]]; then
+              packages_fail_on_master+=("$package")
+            else
+              # state unknown which means probably the package is new and not in master yet
+              packages_fail_new+=("$package")
+            fi
+          done
+
+          if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
+            summaries_plus=$((summaries_plus + 2))
+            if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
+              packages_fail_on_master_plural=s
+            fi
+
+            cat <<EOF >>"$report.tmp"
+<details>
+
+  <summary>${#packages_fail_on_master[@]} package${packages_fail_on_master_plural:-} failed to build and already failed to build on hydra master:</summary>
+  <ul>
+EOF
+            for package in "${packages_fail_on_master[@]}"; do
+              # filter home path from the error log and upload it
+              if [[ -s logs/$package.log ]]; then
+                url=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+              fi
+
+              echo "<li>" >>"$report.tmp"
+              if [[ -n ${url:-} ]]; then
+                echo "$package: log <a href=\"$url\">$url</a>" >>"$report.tmp"
+              else
+                echo "$package: log was empty" >>"$report.tmp"
+              fi
+              echo "</li>" >>"$report.tmp"
+
+              url=
+            done
+            cat <<EOF >>"$report.tmp"
+  </ul>
+</details>
+EOF
+          fi
+
+          if [[ ${#packages_fail_new[@]} -gt 0 ]]; then
+            summaries_plus=$((summaries_plus + 2))
+            if [[ ${#packages_fail_new[@]} -gt 1 ]]; then
+              packages_fail_new_plural=s
+            fi
+
+            cat <<EOF >>"$report.tmp"
+<details>
+
+  <summary>${#packages_fail_new[@]} package${packages_fail_new_plural:-} failed to build and are new build failure${packages_fail_new_plural:-}:</summary>
+  <ul>
+EOF
+            for package in "${packages_fail_new[@]}"; do
+              # filter home path from the error log and upload it
+              if [[ -s logs/$package.log ]]; then
+                url=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+              fi
+
+              echo "<li>" >>"$report.tmp"
+              if [[ -n ${url:-} ]]; then
+                echo "$package: log <a href=\"$url\">$url</a>" >>"$report.tmp"
+              else
+                echo "$package: log was empty" >>"$report.tmp"
+              fi
+              echo "</li>" >>"$report.tmp"
+
+              url=
+            done
+            cat <<EOF >>"$report.tmp"
+  </ul>
+</details>
+EOF
+          fi
+          ;;
+        *)
+          # trim first two lines, add a line break to prevent EOF from pup if text is empty and extract summary
+          tail -n +2 "$report" | {
+            cat
+            echo
+          } | pup -i 0 ":parent-of(:contains(\"$state\"))" >>"$report.tmp"
+          ;;
+      esac
+    done
+
+    summaries_after=$(rg -co summary "$report.tmp")
+
+    if [[ ${summaries_after:-0} != $((summaries_before + summaries_plus)) ]]; then
+      echo "Something went wrong. Summaries before ($summaries_before) and after ($summaries_after) do not match."
+    fi
+
+    if [[ -f $lint_check ]]; then
+      cat <<EOF >>"$report.tmp"
+
+The following issues got detected with the above build packages.
+Please fix at least the ones listed with your changed packages:
+
+EOF
+      cat "$lint_check" >>"$report.tmp"
+      rm "$lint_check"
+    fi
+
+    # remove extra new lines before and afer <li>
+    sed "$report.tmp" -e '/<li>/N;s/\n//' -e '/<li>/N;s/\n//' >"$report"
+    rm "$report.tmp"
+  )
+
+  mdcat report.md
+fi
