@@ -197,8 +197,8 @@ EOF
     summaries_plus=0
 
     cat <<EOF >"$report.tmp"
-This is a semi-automatic executed nixpkgs-review which does not build all packages (e.g. lumo, tensorflow or pytorch)
-If you find some bugs or got suggestions for further things to search or run please reach out to SuperSandro2000 on IRC.
+This is a semi-automatic executed nixpkgs-review which is checked by a human on a best effort basis and does not build all packages (e.g. lumo, tensorflow or pytorch).
+If you have any questions or problems please reach out to SuperSandro2000 on IRC.
 
 EOF
     head -1 "$report" >>"$report.tmp"
