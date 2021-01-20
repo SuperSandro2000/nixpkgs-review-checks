@@ -47,7 +47,7 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
       rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'Ran 0 tests in 0.000s' -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log" &
 
       # check default.nix of the package for common errors and display it
-      rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'rev = "\$\{version\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' "$package_nix_file" &
+      rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' "$package_nix_file" &
 
       if rg --ignore-case -e 'Ran 0 tests in 0.000s' "$package_log"; then
         prepend_package_name=true
@@ -69,11 +69,12 @@ A typo in pythonImportsCheck got detected.
 EOF
       fi
 
-      if rg --ignore-case -e 'rev = "\$\{version\}";' "$package_nix_file"; then
+      avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
+      if [[ -n $avoidableStringConversion ]]; then
         prepend_package_name=true
         cat <<EOF >>"$lint_check_package"
-An avoidable string conversion got detected: \`rev = "\${version}";\`
-Please do not convert version to a string if you do not prepend a string like \`v\`.
+An avoidable string conversion got detected: \`$avoidableStringConversion\`
+Please do not convert variable to a string without adding a string like \`v\`.
 
 EOF
       fi
