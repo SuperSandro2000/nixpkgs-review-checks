@@ -56,7 +56,7 @@ Zero tests run by pytest got detected: 'Ran 0 tests in 0.000s'
 You have the following options to fix this:
   - Tell pytest(CheckHook) where to find the tests included in the package
   - Check if the GitHub Repo contains tests but they are not shipped with Pypi. If so please switch to \`fetchFromGitHub\`.
-  - If the Packages does not contain any tests add \'doCheck = false;'\` and a \`pythonImportsCheck\`.
+  - If the Packages does not contain any tests add \`'doCheck = false;'\` and a \`pythonImportsCheck\`.
 
 EOF
       fi
