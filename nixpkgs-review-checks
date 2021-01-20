@@ -303,7 +303,7 @@ EOF
     summaries_after=$(rg -co summary "$report.tmp")
 
     if [[ ${summaries_after:-0} != $((summaries_before + summaries_plus)) ]]; then
-      echo "Something went wrong. Summaries before ($summaries_before) and after ($summaries_after) do not match."
+      echo "Something went wrong. Summaries before ($summaries_before + $summaries_plus) and after ($summaries_after) do not match."
     fi
 
     if [[ -f $lint_check ]]; then
