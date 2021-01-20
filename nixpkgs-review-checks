@@ -97,7 +97,7 @@ EOF
       # nixpkgs-hammer
       # tail removes "When evaluating attribute ..."
       # sed removes color escape codes, adds markdown code fences and replaced home path
-      hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -e "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g")"
+      hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g")"
 
       # small delay required by nixpkgs-hammer or it errors
       sleep 0.1
