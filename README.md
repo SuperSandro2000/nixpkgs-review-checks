@@ -16,8 +16,10 @@ This project does additional checks and adds more information about the build lo
 
 - The following programs need to be installed in your environment:
   - [cached-nix-shell](https://github.com/xzfc/cached-nix-shell)
+  - curl
   - gh
   - jq
+  - nix-instantiate
 - Source `bashrc` in your `~/.bashrc`.
 
 ```bash

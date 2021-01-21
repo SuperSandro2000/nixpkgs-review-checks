@@ -1,0 +1,32 @@
+query Query ($PR: Int!) {
+  repository(name: "nixpkgs", owner: "NixOS") {
+    pullRequest(number: $PR) {
+      commits(last: 1) {
+        nodes {
+          commit {
+            checkSuites(last: 1) {
+              nodes {
+                checkRuns(filterBy: {checkType: LATEST, appId: 20500}, last: 10) {
+                  nodes {
+                    url
+                    title
+                    summary
+                    name
+                    detailsUrl
+                    conclusion
+                    checkSuite {
+                      app {
+                        slug
+                        databaseId
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
