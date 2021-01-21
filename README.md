@@ -8,7 +8,9 @@ This project does additional checks and adds more information about the build lo
 - Sort build failures by failing on master and new failing via hydra-check
 - Run nixpkgs-hammering, filter warnings and add them to the report
 - Automatically upload logs on build failures to termbin
-- check binaries and shared objects for missing objects and left over debugging symbols
+- Check binaries and shared objects for missing objects and left over debugging symbols
+- Block the review shell from closing if there are unstaged changes in nixpkgs
+- Filter empty reports and non usefull reports for certain people
 
 ## Installation
 
