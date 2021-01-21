@@ -33,15 +33,15 @@ nixpkgs-review() {
         fi
 
         if [[ -n $(git diff --name-only 2>&1) ]]; then
-          echo "There are unstaged files. Not leaving as long they are present!"
+          echo "There are unstaged files. Not leaving review-shell as long they are present!"
           return
         else
           cd ..
         fi
 
-        # discard reports without any summary which means no packages where build
+        # skip posting reports without any summary which means no packages where build
         if [[ -z $(rg -co summary report.md) ]]; then
-          echo -e "Report does not contain any \u001b[36summary\u001b[0m. Discarding."
+          echo -e "Report does not contain any \u001b[36summary\u001b[0m. Report was not posted."
           return
         fi
 
@@ -59,7 +59,7 @@ nixpkgs-review() {
         # shellcheck disable=SC2076
         if [[ " ${blocklist[*]} " =~ " $author " ]]; then
           if ! rg failed report.md &>/dev/null; then
-            echo -e "Report does not contain any \u001b[36mfailed\u001b[0m builds. Discarding."
+            echo -e "Report does not contain any \u001b[36mfailed\u001b[0m builds. Report was not posted."
             return
           fi
         fi
