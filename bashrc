@@ -80,8 +80,9 @@ nixpkgs-review() {
         flags="${flags:+$flags }--skip-package-regex $package"
       done
 
-      # shellcheck disable=SC2086
-      command nixpkgs-review pr $flags "$@"
+      cached-nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz \
+        -p bloaty curl gawk gnused hydra-check mdcat jq pup ripgrep \
+        --run "nixpkgs-review pr $flags $*"
       ;;
     *)
       command nixpkgs-review "$@"

@@ -1,6 +1,4 @@
-#!/usr/bin/env cached-nix-shell
-#!nix-shell -i bash -p bloaty curl gawk gnused hydra-check mdcat jq pup ripgrep
-# shellcheck shell=bash
+#!/usr/bin/env bash
 set -eou pipefail
 
 tb() {
