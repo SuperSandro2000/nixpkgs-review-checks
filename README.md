@@ -31,3 +31,5 @@ Just run `nixpkgs-review` normally and all features are activated automatically.
 ## Configuration
 
 - `$NIXPKGS_HAMMER_ARCHIVE` URL to an archive to use for nixpkgs-hammering
+- `$NIXPKGS_REVIEW_CHECKS_DEBUG` Set to not post any reports
+- `$NIXPKGS_REVIEW_CHECKS_RUN` Set after execution. Unset to re-run.

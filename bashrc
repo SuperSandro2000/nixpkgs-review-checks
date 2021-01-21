@@ -67,7 +67,11 @@ nixpkgs-review() {
           fi
         fi
 
-        command nixpkgs-review "$@" && exit
+        if [[ -n $NIXPKGS_REVIEW_CHECKS_DEBUG ]]; then
+          echo -e "\u001b[36mDEBUG\u001b[0m: Would post the report."
+        else
+          command nixpkgs-review "$@" && exit
+        fi
       else
         command nixpkgs-review "$@"
       fi
