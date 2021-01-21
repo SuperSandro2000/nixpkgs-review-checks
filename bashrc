@@ -51,7 +51,7 @@ nixpkgs-review() {
         ofborg_state=$(curl -H "Authorization: token $GITHUB_TOKEN" -X POST https://api.github.com/graphql --data "{ \"query\": \"$(sed 's/"/\\"/g' "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/ofborg.graphql | tr -d '\n')\", \"variables\": \"{\\\"PR\\\": $PR}\"}" -s | jq -r ".[][][][][][][][][][][][][]|select(.name | contains(\"passthru.tests on $arch\")).conclusion")
 
         # report contains one summary, one package was build and ofborg reported success for building this package
-        if [[ $(rg -co '</summary>' report.md) == 1 && $(rg -co "1 package built:" report.md) == 1 && $ofborg_state == SUCCESS ]]; then
+        if [[ $(rg -co '</summary>' report.md) == 1 && $(rg -co "1 package built:" report.md) == 1 && -z $(rg -co "following issues got" report.md) && $ofborg_state == SUCCESS ]]; then
           echo -e "This report only contains one package build and ofborg already tested this. Report was not posted."
           return
         fi
