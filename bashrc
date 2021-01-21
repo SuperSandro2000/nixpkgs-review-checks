@@ -2,9 +2,6 @@
 # source this in your .bashrc
 
 nixpkgs-review() {
-  # required that some executions of nix-env do not stack overflow
-  # ulimit -s 16384
-
   case "$1" in
     "post-result")
       if [[ $GIT_AUTHOR_NAME == nixpkgs-review ]]; then
