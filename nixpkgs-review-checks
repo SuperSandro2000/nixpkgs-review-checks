@@ -83,7 +83,7 @@ EOF
         cat <<EOF >>"$lint_check_package"
 Please consider this feature to be alpha.
 
-A substituteInPlace with an unused --replace got detected:
+A substituteInPlace with an unmatched pattern got detected:
 \`\`\`
 $substituteCheck
 \`\`\`
