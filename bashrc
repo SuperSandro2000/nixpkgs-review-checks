@@ -48,6 +48,11 @@ nixpkgs-review() {
           return
         fi
 
+        if [[ $(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .state) == closed ]]; then
+          echo -e "The PR is already \u001b[36mmerged/closed\u001b[0m. Report was not posted."
+          return
+        fi
+
         local author blocklist
         author=$(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .user.login)
         # hexa -> mweinelt; qyliss -> alyssais
