@@ -38,7 +38,11 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
         continue
       fi
 
-      package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package")"
+      package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" || echo skip)"
+      # skip packages which have no source location like pkgsMusl.stdenv
+      if [[ $package_nix_file == skip ]]; then
+        continue
+      fi
 
       # check logs for common errors and display it
       # shellcheck disable=SC2016
