@@ -41,7 +41,7 @@ nixpkgs-review() {
 
         # skip posting reports without any summary which means no packages where build
         if [[ -z $(rg -co summary report.md) ]]; then
-          echo -e "Report does not contain any \u001b[36summary\u001b[0m. Report was not posted."
+          echo -e "Report does not contain any \u001b[36msummary\u001b[0m. Report was not posted."
           return
         fi
 
