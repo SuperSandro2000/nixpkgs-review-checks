@@ -76,7 +76,7 @@ EOF
         prepend_package_name=true
         cat <<EOF >>"$lint_check_package"
 An avoidable string conversion got detected: \`$avoidableStringConversion\`
-Please do not convert variable to a string without adding a string like \`v\`.
+Please do not convert variables to a string without modifying them but use them directly instead.
 
 EOF
       fi
