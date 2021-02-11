@@ -64,7 +64,7 @@ nixpkgs-review() {
         local author blocklist
         author=$(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .user.login)
         # hexa -> mweinelt; qyliss -> alyssais
-        blocklist=("alyssais" "ashkitten" "andir" "edef1c" "mweinelt")
+        blocklist=("adisbladis" "alyssais" "ashkitten" "andir" "edef1c" "mweinelt")
 
         # users which requested to not receive build confirmations
         # shellcheck disable=SC2076
