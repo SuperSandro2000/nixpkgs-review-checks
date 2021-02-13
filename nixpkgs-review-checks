@@ -225,21 +225,25 @@ EOF
   <summary>${#packages_fail_on_master[@]} package${packages_fail_on_master_plural:-} failed to build and already failed to build on hydra master:</summary>
   <ul>
 EOF
+
+            github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
+
             for package in "${packages_fail_on_master[@]}"; do
               # filter home path from the error log and upload it
               if [[ -s logs/$package.log ]]; then
-                url=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+                url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+                gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
               fi
 
               echo "<li>" >>"$report.tmp"
-              if [[ -n ${url:-} ]]; then
-                echo "$package: log <a href=\"$url\">$url</a>" >>"$report.tmp"
+              if [[ -n ${url_plain:-} ]]; then
+                echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
               else
                 echo "$package: log was empty" >>"$report.tmp"
               fi
               echo "</li>" >>"$report.tmp"
 
-              url=
+              url_plain=
             done
             cat <<EOF >>"$report.tmp"
   </ul>
