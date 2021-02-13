@@ -97,10 +97,20 @@ nixpkgs-review() {
       for package in $skip_package_regex; do
         flags="${flags:+$flags }--skip-package-regex $package"
       done
+      for package in $skip_package_regex_python; do
+        flags="${flags:+$flags }--skip-package-regex 'python\\d+Packages\\.$package'"
+      done
+
+      # dedup PR numbers
+      if [[ $* =~ - ]]; then
+        flags="${flags:+$flags }$*"
+      else
+        flags="${flags:+$flags }$(echo "$*" | xargs -n1 | sort -u | xargs)"
+      fi
 
       cached-nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz \
         -p bloaty curl gawk gnused hydra-check mdcat jq pup ripgrep \
-        --run "nixpkgs-review pr $flags $*"
+        --run "nixpkgs-review pr $flags"
       ;;
     *)
       command nixpkgs-review "$@"
