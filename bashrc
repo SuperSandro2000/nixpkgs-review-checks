@@ -86,9 +86,10 @@ nixpkgs-review() {
       ;;
     "pr")
       shift
-      local flags skip_package skip_package_regex
-      skip_package="bareos digikam iosevka librealsense libreoffice lumo pcl mrtrix simpleitk smesh torchgpipe torchvision tts"
-      skip_package_regex="\w*ceph\w* \w*edward freecad\w* opencascade\w* \w*sage\w* samba4?Full \w*pyro-ppl \w*pytorch\w* \w*tensorflow\w* \w*tflearn qgis\w* vtk\w* \w*wine\w*"
+      local flags skip_package skip_package_regex skip_package_regex_python
+      skip_package="bareos digikam envoy iosevka librealsense libreoffice lumo pcl mrtrix simpleitk smesh torchgpipe torchvision tts"
+      skip_package_regex=".*ceph.* freecad opencascade.* .*pytorch.* .*sage.* samba4?Full .*tensorflow.* qgis.* .*vtk.* .*wine.*"
+      skip_package_regex_python="baselines edward mask-rcnn pyro-ppl scikit-tda tflearn umap-learn"
 
       for package in $skip_package; do
         flags="${flags:+$flags }--skip-package $package"
