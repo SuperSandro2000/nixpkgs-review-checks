@@ -33,16 +33,31 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
       package="${package_log_file%.*}"
       lint_check_package=../lint_checks.$package.tmp
 
-      # error: package 'ccacheStdenv' has no source location information
-      if [[ $package == ccacheStdenv ]]; then
-        continue
-      fi
-
       package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" || echo skip)"
       # skip packages which have no source location like pkgsMusl.stdenv
-      if [[ $package_nix_file == skip ]]; then
-        continue
-      fi
+      if [[ $package_nix_file != skip ]]; then
+
+        # check default.nix of the package for common errors and display it
+        rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' "$package_nix_file" &
+
+        if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' "$package_nix_file"; then
+          prepend_package_name=true
+          cat <<EOF >>"$lint_check_package"
+A typo in pythonImportsCheck got detected.
+
+EOF
+        fi
+
+        avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
+        if [[ -n $avoidableStringConversion ]]; then
+          prepend_package_name=true
+          cat <<EOF >>"$lint_check_package"
+An avoidable string conversion got detected: \`$avoidableStringConversion\`
+Please do not convert variables to a string without modifying them but use them directly instead.
+
+EOF
+        fi
+      fi # package_nix_file
 
       # check logs for common errors and display it
       # shellcheck disable=SC2016
@@ -56,24 +71,6 @@ You have the following options to fix this:
   - Tell pytest(CheckHook) where to find the tests included in the package
   - Check if the GitHub Repo contains tests but they are not shipped with Pypi. If so please switch to \`fetchFromGitHub\`.
   - If the Packages does not contain any tests add \`'doCheck = false;'\` and a \`pythonImportsCheck\`.
-
-EOF
-      fi
-
-      if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' "$package_nix_file"; then
-        prepend_package_name=true
-        cat <<EOF >>"$lint_check_package"
-A typo in pythonImportsCheck got detected.
-
-EOF
-      fi
-
-      avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
-      if [[ -n $avoidableStringConversion ]]; then
-        prepend_package_name=true
-        cat <<EOF >>"$lint_check_package"
-An avoidable string conversion got detected: \`$avoidableStringConversion\`
-Please do not convert variables to a string without modifying them but use them directly instead.
 
 EOF
       fi
