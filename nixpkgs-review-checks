@@ -157,9 +157,37 @@ EOF
       fi
     }
 
+    check_output() {
+      local found=0
+
+      # args mean we want to ignore a directory
+      if [[ $# == 3 ]]; then
+        local directory=$1
+        local ignore=$2
+        local outputs=${3:1}
+
+        if [[ -d $result/$directory && ! -d $result/$ignore ]]; then
+          found=1
+        fi
+      else
+        local directory=$1
+        local outputs=${2:-$1}
+
+        if [[ -d $result/$directory ]]; then
+          found=1
+        fi
+      fi
+
+      if [[ $found == 1 ]]; then
+        echo -e "Ask if ouput path \u001b[91m$directory\u001b[0m could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
+      fi
+    }
+
     if [[ -n ${result_dir:-} ]]; then
       for result in ../$result_dir; do
         if [[ -d "$result"/bin/ ]]; then
+
+          # run bloaty, ldd and otool on binaries and common library locations to check for debug or missing symbols
           for binary in "$result"/bin/*; do
             check_binary "$binary" &
             # shellcheck disable=SC2015
@@ -180,6 +208,23 @@ EOF
             check_binary "$binary" &
           done
         fi
+
+        # check for common missing outputs
+
+        # not checking bin because it would apply to to many packages
+        #check_output bin
+        check_output include dev
+        check_output lib
+        check_output lib/cmake dev
+        check_output lib/pkgconfig dev
+        check_output libexec lib
+        check_output share/aclocal dev
+        check_output share/doc doc
+        check_output share/gtk-doc devdoc
+        check_output share/devhelp devdoc
+        check_output share/info info
+        check_output share/man/man* share/man/man3 man
+        check_output share/man/man3 devman
       done
     fi
   )
