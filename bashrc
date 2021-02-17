@@ -109,7 +109,7 @@ nixpkgs-review() {
       fi
 
       cached-nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz \
-        -p bloaty curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
+        -p bc bloaty curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
         --run "nixpkgs-review pr $flags"
       ;;
     *)

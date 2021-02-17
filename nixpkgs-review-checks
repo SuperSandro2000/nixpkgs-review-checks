@@ -161,28 +161,35 @@ EOF
     }
 
     check_output() {
-      local found=0
-
       # args mean we want to ignore a directory
       if [[ $# == 3 ]]; then
         local directory=$1
         local ignore=$2
-        local outputs=${3:1}
+        local outputs=$3
 
-        if [[ -d $result/$directory && ! -d $result/$ignore ]]; then
-          found=1
+        # return early if the right directory does not exist
+        if ! [[ -d $result/$directory && ! -d $result/$ignore ]]; then
+          return
         fi
       else
         local directory=$1
         local outputs=${2:-$1}
 
-        if [[ -d $result/$directory ]]; then
-          found=1
+        # return early if directory does not exist
+        if [[ ! -d $result/$directory ]]; then
+          return
         fi
       fi
 
-      if [[ $found == 1 ]]; then
-        echo -e "Ask if ouput path \u001b[91m$directory\u001b[0m could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
+      local directory_size percentage
+
+      # ignore broken symlinks
+      directory_size=$(du -bsL "$result/$directory" 2>/dev/null | awk '{ print $1 }' || true)
+      percentage=$(echo "100 / $result_size * $directory_size" | bc -l)
+
+      if echo "$percentage >= 5" | bc >/dev/null; then
+        directory_size_iec=$(numfmt --to iec --format "%8.1f" "$directory_size" | tr -d ' ')
+        echo -e "$(basename "$result"): Ask if ouput path \u001b[91m$directory\u001b[0m ($directory_size_iec) could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
       fi
     }
 
@@ -213,7 +220,7 @@ EOF
         fi
 
         # check for common missing outputs
-
+        result_size=$(du -bsL "$result" 2>/dev/null | awk '{ print $1 }' || true)
         # not checking bin because it would apply to to many packages
         #check_output bin
         check_output include dev
