@@ -271,7 +271,7 @@ EOF
           packages_fail_new=()
 
           for package in $packages_to_check; do
-            state_on_master=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null | jq ."$package"[0].success || echo skip)
+            state_on_master=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null | jq ."\"$package\""[0].success || echo skip)
             if [[ $state_on_master == false ]]; then
               packages_fail_on_master+=("$package")
             else
