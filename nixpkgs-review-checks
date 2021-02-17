@@ -51,6 +51,16 @@ A typo in pythonImportsCheck got detected.
 EOF
         fi
 
+        breaksCrossCompile="$(rg --ignore-case -e 'CC=cc' -e 'CXX=c++' -e 'AR=ar' -e 'LD=cc' "$package_nix_file" || true)"
+        if [[ -n $breaksCrossCompile ]]; then
+          prepend_package_name=true
+          cat <<EOF >>"$lint_check_package"
+Using CC=cc, CXX=c++, AR=ar or LD=cc prevents cross compiling.
+Please use \`\`CC=\${stdenv.cc.targetPrefix}cc\`\`, \`\`CXX=\${stdenv.cc.targetPrefix}c++\`\`, \`\`AR=\${stdenv.cc.targetPrefix}ar\`\` or \`\`LD=\${stdenv.cc.targetPrefix}cc\`\`.
+
+EOF
+        fi
+
         avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
         if [[ -n $avoidableStringConversion ]]; then
           prepend_package_name=true
