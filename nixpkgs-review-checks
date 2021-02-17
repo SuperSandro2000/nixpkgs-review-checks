@@ -36,7 +36,7 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
       package="${package_log_file%.*}"
       lint_check_package=../lint_checks.$package.tmp
 
-      package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" || echo skip)"
+      package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" 2>/dev/null || echo skip)"
       # skip packages which have no source location like pkgsMusl.stdenv
       if [[ $package_nix_file != skip ]]; then
 
