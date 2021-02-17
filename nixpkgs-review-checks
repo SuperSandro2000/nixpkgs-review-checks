@@ -105,21 +105,23 @@ EOF
 
       # nixpkgs-hammer
       # TODO: this should use the json output
-      # tail removes "When evaluating attribute ..."
-      # sed removes color escape codes, adds markdown code fences and replaced home path
-      hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g")"
+      if [[ $package != ccacheStdenv ]]; then
+        # tail removes "When evaluating attribute ..."
+        # sed removes color escape codes, adds markdown code fences and replaced home path
+        hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g" || echo "No issues found.")"
 
-      # small delay required by nixpkgs-hammer or it errors
-      sleep 0.1
+        # small delay required by nixpkgs-hammer or it errors
+        sleep 0.1
 
-      if [[ -n $hammer_out && ! $hammer_out =~ No\ issues\ found. ]]; then
-        prepend_package_name=true
-        # for each warning in $hammer_out, also strips them
-        # replaces the warning line with a null byte
-        # || [[ -n $warning ]] is required to display the last warning without appending a null byte
-        echo "$hammer_out" | sed -E -e "s/warning: [a-z-]+/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
-          echo "$warning" >>"$lint_check_package"
-        done
+        if [[ -n $hammer_out && ! $hammer_out =~ No\ issues\ found. ]]; then
+          prepend_package_name=true
+          # for each warning in $hammer_out, also strips them
+          # replaces the warning line with a null byte
+          # || [[ -n $warning ]] is required to display the last warning without appending a null byte
+          echo "$hammer_out" | sed -E -e "s/warning: [a-z-]+/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
+            echo "$warning" >>"$lint_check_package"
+          done
+        fi
       fi
 
       if [[ $prepend_package_name == "true" ]]; then
