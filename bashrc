@@ -120,7 +120,7 @@ nixpkgs-review() {
 
 nixpkgs-review-checks() {
   if [[ $GIT_AUTHOR_NAME == nixpkgs-review && -z $NIXPKGS_REVIEW_CHECKS_RUN ]]; then
-    # prevent shell from closing when changes where made in nixpkgs
+    # prevent shell from closing with Ctrl+D when changes where made in nixpkgs
     set -o ignoreeof
 
     "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/nixpkgs-review-checks
