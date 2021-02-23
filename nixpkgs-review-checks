@@ -201,9 +201,10 @@ EOF
       directory_size=$(du -bsL "$result/$directory" 2>/dev/null | awk '{ print $1 }' || true)
       percentage=$(echo "100 / $result_size * $directory_size" | bc -l)
 
-      if echo "$percentage >= 5" | bc >/dev/null; then
+      # only display message if the directory is at least 1 MB and 5% of whole package
+      if [[ $directory_size -ge 1000000 ]] && echo "$percentage >= 5" | bc >/dev/null; then
         directory_size_iec=$(numfmt --to iec --format "%8.1f" "$directory_size" | tr -d ' ')
-        echo -e "$(basename "$result"): Ask if ouput path \u001b[91m$directory\u001b[0m ($directory_size_iec) could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
+        echo -e "$(basename "$result"): Ask if output path \u001b[91m$directory\u001b[0m ($directory_size_iec) could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
       fi
     }
 
