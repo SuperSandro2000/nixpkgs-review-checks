@@ -283,6 +283,36 @@ EOF
             fi
           done
 
+          if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+            github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
+          fi
+
+          upload_log() {
+            local package=$1
+            local url_plain gist_id
+
+            # filter home path from the error log and upload it
+            if [[ -s logs/$package.log ]]; then
+              url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+              echo 1
+              if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+                gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
+              fi
+            fi
+
+            echo "<li>" >>"$report.tmp"
+            if [[ -n ${url_plain:-} ]]; then
+              if [[ -z $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+                echo "$package: <a href=\"$url_plain\">plain log</a>" >>"$report.tmp"
+              else
+                echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
+              fi
+            else
+              echo "$package: log was empty" >>"$report.tmp"
+            fi
+            echo "</li>" >>"$report.tmp"
+          }
+
           if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
             summaries_plus=$((summaries_plus + 2))
             if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
@@ -296,24 +326,8 @@ EOF
   <ul>
 EOF
 
-            github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
-
             for package in "${packages_fail_on_master[@]}"; do
-              # filter home path from the error log and upload it
-              if [[ -s logs/$package.log ]]; then
-                url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
-                gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
-              fi
-
-              echo "<li>" >>"$report.tmp"
-              if [[ -n ${url_plain:-} ]]; then
-                echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
-              else
-                echo "$package: log was empty" >>"$report.tmp"
-              fi
-              echo "</li>" >>"$report.tmp"
-
-              url_plain=
+              upload_log "$package"
             done
             cat <<EOF >>"$report.tmp"
   </ul>
@@ -334,20 +348,7 @@ EOF
   <ul>
 EOF
             for package in "${packages_fail_new[@]}"; do
-              # filter home path from the error log and upload it
-              if [[ -s logs/$package.log ]]; then
-                url=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
-              fi
-
-              echo "<li>" >>"$report.tmp"
-              if [[ -n ${url:-} ]]; then
-                echo "$package: log <a href=\"$url\">$url</a>" >>"$report.tmp"
-              else
-                echo "$package: log was empty" >>"$report.tmp"
-              fi
-              echo "</li>" >>"$report.tmp"
-
-              url=
+              upload_log "$package"
             done
             cat <<EOF >>"$report.tmp"
   </ul>
