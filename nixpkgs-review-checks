@@ -21,6 +21,10 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
   # archive PR
   [[ -n ${PR:-} ]] && nohup savepagenow "https://github.com/NixOS/nixpkgs/pull/$PR" 2>/dev/null &
 
+  if [[ -n ${NIXPKGS_REVIEW_CHECKS_DEBUG:-} ]]; then
+    set -x
+  fi
+
   # save or restore a backup of original report for debugging
   if [[ -f $report.orig ]]; then
     cp "$report.orig" "$report"
