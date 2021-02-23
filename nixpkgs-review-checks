@@ -180,8 +180,9 @@ EOF
         local ignore=$2
         local outputs=$3
 
+        ignored="$(find -L "$result" -maxdepth 2 -type d -regextype egrep -regex "$result/$ignore" -printf 'x')"
         # return early if the right directory does not exist
-        if ! [[ -d $result/$directory && ! -d $result/$ignore ]]; then
+        if ! [[ -d $result/$directory && -z $ignored ]]; then
           return
         fi
       else
@@ -237,7 +238,7 @@ EOF
         # not checking bin because it would apply to to many packages
         #check_output bin
         check_output include dev
-        check_output lib
+        check_output lib "(lib/ghc-.*|python*/site-packages)" lib
         check_output lib/cmake dev
         check_output lib/pkgconfig dev
         check_output libexec lib
