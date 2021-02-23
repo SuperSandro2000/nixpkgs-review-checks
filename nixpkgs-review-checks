@@ -107,12 +107,25 @@ EOF
       # nixpkgs-hammer
       # TODO: this should use the json output
       if [[ $package != ccacheStdenv ]]; then
+        # if package was not directly edited be less picky with nixpkgs-hammering to avoid noise
+        #
+        # changes from the PR reviewing are staged and are compared to the relative path of the current package
+        # if the package was changed in the PR we display all picky results, if not we hide some noise
+        #
+        # disabled checks:
+        # - attribute-ordering: noisy and almost triggers for all packages
+        # - explicit-phases: noisy and almost triggers for all packages
+        # - no-flags-array: triggers to often and is very commonly used even if half broken
+        # - missing-patch-comment: has to many false positives where the filename is enough
+        if [[ $(git status --porcelain) =~ ${package_nix_file#"$(realpath nixpkgs)/"} ]]; then
+          hammer_flags="--exclude attribute-ordering"
+        else
+          hammer_flags="--exclude attribute-ordering --exclude explicit-phases --exclude no-flags-array"
+        fi
+
         # tail removes "When evaluating attribute ..."
         # sed removes color escape codes, adds markdown code fences and replaced home path
-        hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer --exclude attribute-ordering --exclude explicit-phases "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g" || echo "No issues found.")"
-
-        # small delay required by nixpkgs-hammer or it errors
-        sleep 0.1
+        hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer "${hammer_flags[@]}" "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g" || echo "No issues found.")"
 
         if [[ -n $hammer_out && ! $hammer_out =~ No\ issues\ found. ]]; then
           prepend_package_name=true
