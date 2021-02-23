@@ -2,7 +2,8 @@
 set -eou pipefail
 
 tb() {
-  nc termbin.com 9999
+  # only upload the last 20000 lines to keep below ~2 MB
+  tail -20000 | nc termbin.com 9999
 }
 
 nixpkgs-hammer() {
