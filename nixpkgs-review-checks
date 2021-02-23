@@ -119,7 +119,7 @@ EOF
           # for each warning in $hammer_out, also strips them
           # replaces the warning line with a null byte
           # || [[ -n $warning ]] is required to display the last warning without appending a null byte
-          echo "$hammer_out" | sed -E -e "s/warning: [a-z-]+/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
+          echo "$hammer_out" | sed -E -e "/warning: [a-z-]+/s/^/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
             echo "$warning" >>"$lint_check_package"
           done
         fi
