@@ -32,7 +32,6 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
     cp "$report" "$report.orig"
   fi
 
-  summaries_before=$(rg -co summary "$report")
   (
     # run commands for each package build
     cd logs/ 2>/dev/null || exit
@@ -273,8 +272,6 @@ EOF
 
   # run hydra-check on build failures and resort to show regressions clearly
   (
-    summaries_plus=0
-
     cat <<EOF >"$report.tmp"
 This is a semi-automatic executed nixpkgs-review with [nixpkgs-review-checks extension](https://github.com/SuperSandro2000/nixpkgs-review-checks). It is checked by a human on a best effort basis and does not build all packages (e.g. lumo, tensorflow or pytorch).
 If you have any questions or problems please reach out to SuperSandro2000 on IRC.
@@ -331,7 +328,6 @@ EOF
           }
 
           if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
-            summaries_plus=$((summaries_plus + 2))
             if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
               packages_fail_on_master_plural=s
             fi
@@ -353,7 +349,6 @@ EOF
           fi
 
           if [[ ${#packages_fail_new[@]} -gt 0 ]]; then
-            summaries_plus=$((summaries_plus + 2))
             if [[ ${#packages_fail_new[@]} -gt 1 ]]; then
               packages_fail_new_plural=s
             fi
@@ -382,12 +377,6 @@ EOF
           ;;
       esac
     done
-
-    summaries_after=$(rg -co summary "$report.tmp")
-
-    if [[ ${summaries_after:-0} != $((summaries_before + summaries_plus)) ]]; then
-      echo "Something went wrong. Summaries before ($summaries_before + $summaries_plus) and after ($summaries_after) do not match."
-    fi
 
     if [[ -f $lint_check ]]; then
       cat <<EOF >>"$report.tmp"
