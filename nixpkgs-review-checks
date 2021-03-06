@@ -36,7 +36,6 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
     # run commands for each package build
     cd logs/ 2>/dev/null || exit
     for package_log_file in *.log; do
-      prepend_package_name=false
       package="${package_log_file%.*}"
       lint_check_package=../lint_checks.$package.tmp
 
@@ -48,7 +47,6 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
         rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' "$package_nix_file" &
 
         if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' "$package_nix_file"; then
-          prepend_package_name=true
           cat <<EOF >>"$lint_check_package"
 A typo in pythonImportsCheck got detected.
 
@@ -57,7 +55,6 @@ EOF
 
         breaksCrossCompile="$(rg --ignore-case -e 'CC=cc' -e 'CXX=c++' -e 'AR=ar' -e 'LD=cc' "$package_nix_file" || true)"
         if [[ -n $breaksCrossCompile ]]; then
-          prepend_package_name=true
           cat <<EOF >>"$lint_check_package"
 Using CC=cc, CXX=c++, AR=ar or LD=cc prevents cross compiling.
 Please use \`\`CC=\${stdenv.cc.targetPrefix}cc\`\`, \`\`CXX=\${stdenv.cc.targetPrefix}c++\`\`, \`\`AR=\${stdenv.cc.targetPrefix}ar\`\` or \`\`LD=\${stdenv.cc.targetPrefix}cc\`\`.
@@ -67,7 +64,6 @@ EOF
 
         avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
         if [[ -n $avoidableStringConversion ]]; then
-          prepend_package_name=true
           cat <<EOF >>"$lint_check_package"
 An avoidable string conversion got detected: \`$avoidableStringConversion\`
 Please do not convert variables to a string without modifying them but use them directly instead.
@@ -131,17 +127,20 @@ EOF
         hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer "${hammer_flags[@]}" "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g" || echo "No issues found.")"
 
         if [[ -n $hammer_out && ! $hammer_out =~ No\ issues\ found. ]]; then
-          prepend_package_name=true
           # for each warning in $hammer_out, also strips them
           # replaces the warning line with a null byte
           # || [[ -n $warning ]] is required to display the last warning without appending a null byte
           echo "$hammer_out" | sed -E -e "/warning: [a-z-]+/s/^/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
+            if [[ $warning =~ has\ not\ yet\ been\ built ]]; then
+              continue
+            fi
+
             echo "$warning" >>"$lint_check_package"
           done
         fi
       fi
 
-      if [[ $prepend_package_name == "true" ]]; then
+      if [[ -f $lint_check_package ]]; then
         {
           cat <<EOF
 $package:
