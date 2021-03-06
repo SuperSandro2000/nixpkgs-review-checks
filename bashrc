@@ -87,7 +87,7 @@ nixpkgs-review() {
     "pr")
       shift
       local flags skip_package skip_package_regex skip_package_regex_python
-      skip_package="bareos digikam envoy iosevka librealsense libreoffice lumo pcl mrtrix simpleitk smesh  tts"
+      skip_package="bareos digikam envoy iosevka librealsense libreoffice lumo pcl mrtrix qemu_full simpleitk smesh tts"
       skip_package_regex=".*ceph.* freecad opencascade.* .*pytorch.* .*sage.* samba4?Full .*tensorflow.* qgis.* .*vtk.* .*wine.*"
       skip_package_regex_python="baselines edward mask-rcnn pyro-ppl scikit-tda torchgpipe torchvision tflearn umap-learn"
 
