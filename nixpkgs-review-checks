@@ -121,13 +121,14 @@ EOF
         #
         # disabled checks:
         # - attribute-ordering: noisy and almost triggers for all packages
-        # - explicit-phases: noisy and almost triggers for all packages
-        # - no-flags-array: triggers to often and is very commonly used even if half broken
-        # - missing-patch-comment: has to many false positives where the filename is enough
         if [[ $(git status --porcelain) =~ ${package_nix_file#"$(realpath nixpkgs)/"} ]]; then
-          hammer_flags="--exclude attribute-ordering"
+          hammer_flags=(--exclude attribute-ordering --exclude no-build-output)
         else
-          hammer_flags="--exclude attribute-ordering --exclude explicit-phases --exclude no-flags-array"
+          # - explicit-phases: noisy and almost triggers for all packages
+          # - no-flags-array: triggers often and is very commonly used even if half broken
+          # - missing-patch-comment: has many false positives where the filename is enough
+          # - missing-phase-hooks: has many false positives
+          hammer_flags=(--exclude attribute-ordering --exclude explicit-phases --exclude missing-patch-comment --exclude missing-phase-hooks --exclude no-build-output --exclude no-flags-array)
         fi
 
         # tail removes "When evaluating attribute ..."
