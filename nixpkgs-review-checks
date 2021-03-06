@@ -70,6 +70,15 @@ Please do not convert variables to a string without modifying them but use them 
 
 EOF
         fi
+
+        unsuitableMetaHomepageUse="$(rg --ignore-case -e '\$\{meta.homepage\}' "$package_nix_file" || true)"
+        if [[ -n $unsuitableMetaHomepageUse ]]; then
+          cat <<EOF >>"$lint_check_package"
+An unsuitable usage of meta.homepage got detected.
+Please replace it with the actual URL to not accidentially break things when the homepage gets updated.
+
+EOF
+        fi
       fi # package_nix_file
 
       # check logs for common errors and display it
