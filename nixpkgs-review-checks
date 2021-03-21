@@ -296,8 +296,10 @@ EOF
           packages_fail_new=()
 
           for package in $packages_to_check; do
-            state_on_master=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null | jq ."\"$package\""[0].success || echo skip)
-            if [[ $state_on_master == false ]]; then
+            hydra_state=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null)
+            part_of_eval_set=$(echo "$hydra_state" | jq ."\"$package\""[0].evals || echo skip)
+            state_on_master=$(echo "$hydra_state" | jq ."\"$package\""[0].success || echo skip)
+            if [[ $part_of_eval_set == true && $state_on_master == false ]]; then
               packages_fail_on_master+=("$package")
             else
               # state unknown which means probably the package is new and not in master yet
