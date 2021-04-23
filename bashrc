@@ -123,6 +123,9 @@ nixpkgs-review-checks() {
     # prevent shell from closing with Ctrl+D when changes where made in nixpkgs
     set -o ignoreeof
 
+    # fix python programs when reviewing python2 packages
+    export PYTHONPATH=
+
     "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/nixpkgs-review-checks
     export NIXPKGS_REVIEW_CHECKS_RUN=1
   fi
