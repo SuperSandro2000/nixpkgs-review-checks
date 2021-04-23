@@ -44,11 +44,18 @@ if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-
       if [[ $package_nix_file != skip ]]; then
 
         # check default.nix of the package for common errors and display it
-        rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' "$package_nix_file" &
+        rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' -e 'disabledTestsPaths' "$package_nix_file" &
 
         if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' "$package_nix_file"; then
           cat <<EOF >>"$lint_check_package"
 A typo in pythonImportsCheck got detected.
+
+EOF
+        fi
+
+        if rg --ignore-case -e 'disabledTestsPaths' "$package_nix_file"; then
+          cat <<EOF >>"$lint_check_package"
+A typo in disabledTestPaths got detected.
 
 EOF
         fi
