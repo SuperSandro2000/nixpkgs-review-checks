@@ -289,7 +289,6 @@ EOF
   (
     cat <<EOF >"$report.tmp"
 This is a semi-automatic executed nixpkgs-review with [nixpkgs-review-checks extension](https://github.com/SuperSandro2000/nixpkgs-review-checks). It is checked by a human on a best effort basis and does not build all packages (e.g. lumo, tensorflow or pytorch).
-If you have any questions or problems please reach out to SuperSandro2000 on IRC.
 
 EOF
     head -1 "$report" >>"$report.tmp"
