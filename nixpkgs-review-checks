@@ -86,6 +86,15 @@ Please replace it with the actual URL to not accidentially break things when the
 
 EOF
         fi
+
+        if rg --ignore-case -e '0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5' "$package_nix_file"; then
+          cat <<EOF >>"$lint_check_package"
+An empty go vendor directory got detected:
+Try replacing $()vendorSha256 = "0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5";$()
+with $()vendorSha256 = null;$()
+
+EOF
+        fi
       fi # package_nix_file
 
       # check logs for common errors and display it
