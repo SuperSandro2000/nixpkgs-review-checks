@@ -4,7 +4,8 @@
 nixpkgs-review() {
   case "$1" in
     "post-result")
-      if [[ $GIT_AUTHOR_NAME == nixpkgs-review ]]; then
+      # shellcheck disable=SC2154
+      if [[ $name == name=review-shell || -v PR ]]; then
         correct_dir=false
 
         if [[ -d nixpkgs ]]; then
@@ -119,7 +120,8 @@ nixpkgs-review() {
 }
 
 nixpkgs-review-checks() {
-  if [[ $GIT_AUTHOR_NAME == nixpkgs-review && -z $NIXPKGS_REVIEW_CHECKS_RUN ]]; then
+  # shellcheck disable=SC2154
+  if [[ ($name == review-shell || -v PR) && -z $NIXPKGS_REVIEW_CHECKS_RUN ]]; then
     # prevent shell from closing with Ctrl+D when changes where made in nixpkgs
     set -o ignoreeof
 

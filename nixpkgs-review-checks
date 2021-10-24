@@ -14,7 +14,7 @@ nixpkgs-hammer() {
   fi
 }
 
-if [[ ${GIT_AUTHOR_NAME:-} == nixpkgs-review && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
+if [[ ${name:-} == review-shell && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
   lint_check=lint_checks.tmp
   report=report.md
 
