@@ -85,9 +85,12 @@ nixpkgs-review() {
         command nixpkgs-review "$@"
       fi
       ;;
-    "pr")
-      shift
-      local flags skip_package skip_package_regex skip_package_regex_python
+    "pr" | "rev")
+      local command flags skip_package skip_package_regex skip_package_regex_python
+
+      command=$*
+      shift ${#@}
+
       skip_package="bareos digikam envoy iosevka librealsense libreoffice lumo pcl mrtrix qemu_full simpleitk smesh tts"
       skip_package_regex=".*ceph.* freecad opencascade.* .*pytorch.* .*sage.* samba4?Full .*tensorflow.* qgis.* .*vtk.* .*wine.*"
       skip_package_regex_python="baselines edward mask-rcnn pyro-ppl scikit-tda torchgpipe torchvision tflearn umap-learn"
@@ -110,8 +113,8 @@ nixpkgs-review() {
       fi
 
       cached-nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz \
-        -p bc bloaty curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
-        --run "nixpkgs-review pr $flags"
+        -p bc bloaty coreutils curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
+        --run "nixpkgs-review $command $flags"
       ;;
     *)
       command nixpkgs-review "$@"
