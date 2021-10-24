@@ -306,102 +306,102 @@ EOF
 
     for state in "marked as broken and skipped" "present in ofBorgs evaluation, but not found in the checkout" "blacklisted" "failed to build" "built"; do
       case $state in
-        "failed to build")
-          arch=$(nix-instantiate --eval --json --expr builtins.currentSystem | jq -r)
-          packages_to_check=$(tail -n +2 "$report" | pup -i 0 ':parent-of(:contains("failed to build")) ul li text{}')
-          packages_fail_on_master=()
-          packages_fail_new=()
+      "failed to build")
+        arch=$(nix-instantiate --eval --json --expr builtins.currentSystem | jq -r)
+        packages_to_check=$(tail -n +2 "$report" | pup -i 0 ':parent-of(:contains("failed to build")) ul li text{}')
+        packages_fail_on_master=()
+        packages_fail_new=()
 
-          for package in $packages_to_check; do
-            hydra_state=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null)
-            part_of_eval_set=$(echo "$hydra_state" | jq ."\"$package\""[0].evals || echo skip)
-            state_on_master=$(echo "$hydra_state" | jq ."\"$package\""[0].success || echo skip)
-            if [[ $part_of_eval_set == true && $state_on_master == false ]]; then
-              packages_fail_on_master+=("$package")
-            else
-              # state unknown which means probably the package is new and not in master yet
-              packages_fail_new+=("$package")
+        for package in $packages_to_check; do
+          hydra_state=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null)
+          part_of_eval_set=$(echo "$hydra_state" | jq ."\"$package\""[0].evals || echo skip)
+          state_on_master=$(echo "$hydra_state" | jq ."\"$package\""[0].success || echo skip)
+          if [[ $part_of_eval_set == true && $state_on_master == false ]]; then
+            packages_fail_on_master+=("$package")
+          else
+            # state unknown which means probably the package is new and not in master yet
+            packages_fail_new+=("$package")
+          fi
+        done
+
+        if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+          github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
+        fi
+
+        upload_log() {
+          local package=$1
+          local url_plain gist_id
+
+          # filter home path from the error log and upload it
+          if [[ -s logs/$package.log ]]; then
+            url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+            echo 1
+            if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+              gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
             fi
-          done
-
-          if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
-            github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
           fi
 
-          upload_log() {
-            local package=$1
-            local url_plain gist_id
-
-            # filter home path from the error log and upload it
-            if [[ -s logs/$package.log ]]; then
-              url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
-              echo 1
-              if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
-                gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
-              fi
-            fi
-
-            echo "<li>" >>"$report.tmp"
-            if [[ -n ${url_plain:-} ]]; then
-              if [[ -z $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
-                echo "$package: <a href=\"$url_plain\">plain log</a>" >>"$report.tmp"
-              else
-                echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
-              fi
+          echo "<li>" >>"$report.tmp"
+          if [[ -n ${url_plain:-} ]]; then
+            if [[ -z $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+              echo "$package: <a href=\"$url_plain\">plain log</a>" >>"$report.tmp"
             else
-              echo "$package: log was empty" >>"$report.tmp"
+              echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
             fi
-            echo "</li>" >>"$report.tmp"
-          }
+          else
+            echo "$package: log was empty" >>"$report.tmp"
+          fi
+          echo "</li>" >>"$report.tmp"
+        }
 
-          if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
-            if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
-              packages_fail_on_master_plural=s
-            fi
+        if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
+          if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
+            packages_fail_on_master_plural=s
+          fi
 
-            cat <<EOF >>"$report.tmp"
+          cat <<EOF >>"$report.tmp"
 <details>
 
   <summary>${#packages_fail_on_master[@]} package${packages_fail_on_master_plural:-} failed to build and already failed to build on hydra master:</summary>
   <ul>
 EOF
 
-            for package in "${packages_fail_on_master[@]}"; do
-              upload_log "$package"
-            done
-            cat <<EOF >>"$report.tmp"
+          for package in "${packages_fail_on_master[@]}"; do
+            upload_log "$package"
+          done
+          cat <<EOF >>"$report.tmp"
   </ul>
 </details>
 EOF
+        fi
+
+        if [[ ${#packages_fail_new[@]} -gt 0 ]]; then
+          if [[ ${#packages_fail_new[@]} -gt 1 ]]; then
+            packages_fail_new_plural=s
           fi
 
-          if [[ ${#packages_fail_new[@]} -gt 0 ]]; then
-            if [[ ${#packages_fail_new[@]} -gt 1 ]]; then
-              packages_fail_new_plural=s
-            fi
-
-            cat <<EOF >>"$report.tmp"
+          cat <<EOF >>"$report.tmp"
 <details>
 
   <summary>${#packages_fail_new[@]} package${packages_fail_new_plural:-} failed to build and are new build failure${packages_fail_new_plural:-}:</summary>
   <ul>
 EOF
-            for package in "${packages_fail_new[@]}"; do
-              upload_log "$package"
-            done
-            cat <<EOF >>"$report.tmp"
+          for package in "${packages_fail_new[@]}"; do
+            upload_log "$package"
+          done
+          cat <<EOF >>"$report.tmp"
   </ul>
 </details>
 EOF
-          fi
-          ;;
-        *)
-          # trim first two lines, add a line break to prevent EOF from pup if text is empty and extract summary
-          tail -n +2 "$report" | {
-            cat
-            echo
-          } | pup -i 0 ":parent-of(:contains(\"$state\"))" >>"$report.tmp"
-          ;;
+        fi
+        ;;
+      *)
+        # trim first two lines, add a line break to prevent EOF from pup if text is empty and extract summary
+        tail -n +2 "$report" | {
+          cat
+          echo
+        } | pup -i 0 ":parent-of(:contains(\"$state\"))" >>"$report.tmp"
+        ;;
       esac
     done
 
