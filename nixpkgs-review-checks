@@ -41,7 +41,8 @@ if [[ ${name:-} == review-shell && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
 
       package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" 2>/dev/null || echo skip)"
       # skip packages which have no source location like pkgsMusl.stdenv
-      if [[ $package_nix_file != skip ]]; then
+      # runCommand returns a path to trivial-builders.nix which also contains an empty direcotry hash
+      if [[ ! $package_nix_file =~ pkgs/build-support/trivial-builders.nix && $package_nix_file != skip ]]; then
 
         # check default.nix of the package for common errors and display it
         rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' -e 'disabledTestsPaths' "$package_nix_file" &
