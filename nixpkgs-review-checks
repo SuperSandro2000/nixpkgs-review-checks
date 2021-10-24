@@ -10,7 +10,7 @@ nixpkgs-hammer() {
   if [[ -e ${NIXPKGS_HAMMER_BIN:-} ]]; then
     $NIXPKGS_HAMMER_BIN "$@"
   else
-    nix run -f "${NIXPKGS_HAMMER_ARCHIVE:-https://github.com/jtojnar/nixpkgs-hammering/archive/master.tar.gz}" -c nixpkgs-hammer "$@"
+    nix shell -f "${NIXPKGS_HAMMER_ARCHIVE:-https://github.com/jtojnar/nixpkgs-hammering/archive/master.tar.gz}" -c nixpkgs-hammer "$*"
   fi
 }
 
