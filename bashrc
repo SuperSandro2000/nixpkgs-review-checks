@@ -112,9 +112,15 @@ nixpkgs-review() {
         flags="${flags:+$flags }$(echo "$*" | xargs -n1 | sort -u | xargs)"
       fi
 
-      cached-nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz \
-        -p bc bloaty coreutils curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
-        --run "nixpkgs-review $command $flags"
+      (
+        # TODO: make this configurable
+        nixpkgs=$HOME/src/nixpkgs
+        cd "$nixpkgs" || return
+
+        cached-nix-shell -I nixpkgs="$nixpkgs" \
+          -p bc bloaty coreutils curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
+          --run "nixpkgs-review $command $flags"
+      )
       ;;
     *)
       command nixpkgs-review "$@"
