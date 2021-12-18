@@ -415,15 +415,17 @@ EOF
     done
 
     if [[ -f $lint_check ]]; then
-      cat <<EOF >>"$report.tmp"
+      {
+        cat <<EOF
 
 The following issues got detected with the above build packages.
 Please fix at least the ones listed with your changed packages:
 
 <details>
 EOF
-      cat "$lint_check" >>"$report.tmp"
-      echo "</details>" >>"$report.tmp"
+        cat "$lint_check"
+        echo "</details>"
+      } >>"$report.tmp"
       rm "$lint_check"
     fi
 
