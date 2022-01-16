@@ -113,9 +113,10 @@ nixpkgs-review() {
       fi
 
       (
-        # TODO: make this configurable
-        nixpkgs=$HOME/src/nixpkgs
-        cd "$nixpkgs" || return
+        nixpkgs=${NIXPKGS_REVIEW_CHECKS_SOURCE:$HOME/src/nixpkgs}
+        if [[ -d $nixpkgs ]]; then
+          cd "$nixpkgs" || return
+        fi
 
         cached-nix-shell -I nixpkgs="$nixpkgs" \
           -p bc bloaty coreutils curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \

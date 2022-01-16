@@ -34,5 +34,6 @@ Just run `nixpkgs-review` normally and all features are activated automatically.
 
 - `$NIXPKGS_HAMMER_ARCHIVE` URL to an archive to use for nixpkgs-hammering
 - `$NIXPKGS_REVIEW_CHECKS_DEBUG` Set to not post any reports and show debug output
-- `$NIXPKGS_REVIEW_CHECKS_RUN` Set after execution. Unset to re-run.
+- `$NIXPKGS_REVIEW_CHECKS_RUN` Set after execution, unset to re-run
+- `$NIXPKGS_REVIEW_CHECKS_SOURCE` Path to the nixpkgs repository to be able to run nixpkgs-review from anywhere
 - `$NIXPKGS_REVIEW_GITHUB_TOKEN` Token to use for gist uploads
