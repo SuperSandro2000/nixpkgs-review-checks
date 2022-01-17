@@ -14,21 +14,34 @@ Add additional checks and more information from build logs and outputs to the re
 
 ## Installation
 
-- The following programs need to be installed in your environment:
-  - [cached-nix-shell](https://github.com/xzfc/cached-nix-shell)
+### Shadow nixpkgs-review
+
+- The following programs need to be installed in your enviroment if you want to shadow your nixpkgs-review command:
   - curl
   - gh
   - jq
   - nix-instantiate
+
+Optionally you can install [cached-nix-shell](https://github.com/xzfc/cached-nix-shell) to speedup the start of nixpkgs-review.
+
 - Source `bashrc` in your `~/.bashrc`.
 
 ```bash
 source ~/source/nixpkgs-review-checks/bashrc
 ```
 
+### Invoke nixpkgs-review-checks (Alpha)
+
+If you don't want to change your enviroment you can invoke `nixpkgs-review-checks` instead of `nixpkgs-review`.
+This can also be aliased
+
+```bash
+alias nixpkgs-review='nixpkgs-review-checks'
+```
+
 ## Usage
 
-Just run `nixpkgs-review` normally and all features are activated automatically.
+If you opted into shadow the command invoke `nixpkgs-review` otherwise `nixpkgs-review-checks`.
 
 ## Configuration
 

@@ -2,11 +2,11 @@
 # source this in your .bashrc
 
 nixpkgs-review() {
-  case "$1" in
+  case "${1:-}" in
     "post-result")
       # shellcheck disable=SC2154
       if [[ $name == name=review-shell || -v PR ]]; then
-        correct_dir=false
+        local correct_dir=false
 
         if [[ -d nixpkgs ]]; then
           cd nixpkgs || return=$? && return=$?
@@ -113,14 +113,26 @@ nixpkgs-review() {
       fi
 
       (
-        nixpkgs=${NIXPKGS_REVIEW_CHECKS_SOURCE:$HOME/src/nixpkgs}
+        local nixpkgs=${NIXPKGS_REVIEW_CHECKS_SOURCE:-$HOME/src/nixpkgs}
         if [[ -d $nixpkgs ]]; then
           cd "$nixpkgs" || return
         fi
 
-        cached-nix-shell -I nixpkgs="$nixpkgs" \
-          -p bc bloaty coreutils curl gawk gh gnused hydra-check mdcat jq pup python3Packages.ansi2html ripgrep savepagenow \
-          --run "nixpkgs-review $command $flags"
+        check() {
+          type -P "$1"
+        }
+        local review_command="command nixpkgs-review $command $flags"
+
+        if check bc && check bloaty && check coreutils && check curl && check gawk && check gh && check sed && check hydra-check && check mdcat && check jp && check pup && ansi2html && check rg && savepagenow; then
+          $review_command
+        else
+          nix_shell=nix-shell
+          if type -P cached-nix-shell &>/dev/null; then
+            nix_shell=cached-nix-shell
+          fi
+
+          $nix_shell -I nixpkgs="$nixpkgs" "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/shell.nix" --run "$review_command"
+        fi
       )
       ;;
     *)
@@ -129,7 +141,7 @@ nixpkgs-review() {
   esac
 }
 
-nixpkgs-review-checks() {
+nixpkgs-review-checks-hook() {
   # shellcheck disable=SC2154
   if [[ ($name == review-shell || -v PR) && -z $NIXPKGS_REVIEW_CHECKS_RUN ]]; then
     # prevent shell from closing with Ctrl+D when changes where made in nixpkgs
@@ -143,4 +155,4 @@ nixpkgs-review-checks() {
   fi
 }
 
-PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }nixpkgs-review-checks"
+export PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }nixpkgs-review-checks-hook"
