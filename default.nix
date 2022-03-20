@@ -1,11 +1,13 @@
-{ pkgs ? import <nixpkgs> { } }:
+{ pkgs ? import <nixpkgs> { }
+, src ? ./.
+}:
 
 with pkgs;
 
 stdenv.mkDerivation rec {
   name = "nixpkgs-review-checks";
 
-  src = ./.;
+  inherit src;
 
   nativeBuildInputs = [
     makeWrapper
