@@ -2,10 +2,6 @@
 # source this in your .bashrc
 set -eou pipefail
 
-nixpkgs-review() {
-  exec nixpkgs-review-checks "$@"
-}
-
 tb() {
   # only upload the last 20000 lines to keep below ~2 MB
   tail -20000 | nc termbin.com 9999
