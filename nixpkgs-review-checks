@@ -278,6 +278,10 @@ EOF
           done
         fi
 
+        if compgen -G "$result"/lib/python*/site-packages/*-*.dist-info/ | rg -q "0.0.0"; then
+          echo "pythonPackages $result has version number 0.0.0 which means the packaging is most likely broken."
+        fi
+
         # check for common missing outputs
         result_size=$(du -bsL "$result" 2>/dev/null | awk '{ print $1 }' || true)
         # not checking bin because it would apply to to many packages
