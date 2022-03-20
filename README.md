@@ -17,10 +17,21 @@ Add additional checks and more information from build logs and outputs to the re
 ### Shadow nixpkgs-review
 
 - The following programs need to be installed in your enviroment if you want to shadow your nixpkgs-review command:
+  - ansi2html
+  - bc
+  - bloaty
+  - coreutils
   - curl
+  - gawk
   - gh
   - jq
-  - nix-instantiate
+  - hydra-check
+  - mdcat
+  - nix
+  - nixpkgs-hammer
+  - pup
+  - ripgrep
+  - savepagenow
 
 Optionally you can install [cached-nix-shell](https://github.com/xzfc/cached-nix-shell) to speedup the start of nixpkgs-review.
 
