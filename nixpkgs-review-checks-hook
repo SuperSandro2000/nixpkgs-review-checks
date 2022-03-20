@@ -1,0 +1,450 @@
+#!/usr/bin/env bash
+# source this in your .bashrc
+set -eou pipefail
+
+nixpkgs-review() {
+  exec nixpkgs-review-checks "$@"
+}
+
+tb() {
+  # only upload the last 20000 lines to keep below ~2 MB
+  tail -20000 | nc termbin.com 9999
+}
+
+_nixpkgs-review-checks-hook() {
+  if [[ (${name:-} == review-shell || -v PR) && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
+    lint_check=lint_checks.tmp
+    report=report.md
+
+    # prevent shell from closing with Ctrl+D when changes where made in nixpkgs
+    set -o ignoreeof
+
+    # fix python programs when reviewing python2 packages
+    export PYTHONPATH=
+
+    # archive PR
+    [[ -n ${PR:-} ]] && nohup savepagenow "https://github.com/NixOS/nixpkgs/pull/$PR" 2>/dev/null &
+
+    if [[ -n ${NIXPKGS_REVIEW_CHECKS_DEBUG:-} ]]; then
+      set -x
+    fi
+
+    # save or restore a backup of original report for debugging
+    if [[ -f $report.orig ]]; then
+      cp "$report.orig" "$report"
+    else
+      cp "$report" "$report.orig"
+    fi
+
+    (
+      # run commands for each package build
+      cd logs/ 2>/dev/null || exit
+      for package_log_file in *.log; do
+        package="${package_log_file%.*}"
+        lint_check_package=../lint_checks.$package.tmp
+
+        missingMeta="$(nix-instantiate --eval -E "(import ./. { }).pkgs.$package.meta.description" || true)"
+        if [[ -n $missingMeta ]]; then
+          cat <<EOF >>"$lint_check_package"
+Package is missing a meta section.
+If the package is using runCommand please make sure to inherit or create a meta section.
+
+EOF
+        fi
+
+        package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" 2>/dev/null || echo skip)"
+        # skip packages which have no source location like pkgsMusl.stdenv
+        # runCommand returns a path to trivial-builders.nix which also contains an empty direcotry hash
+        if [[ ! $package_nix_file =~ pkgs/build-support/trivial-builders.nix && $package_nix_file != skip ]]; then
+
+          # check default.nix of the package for common errors and display it
+          rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' -e '= "\$\{\w*\}";' -e 'propagatedBuildInputs = [ ];' -e 'propogatedBuildInputs' -e 'propagateBuildInputs' -e 'longDecsription' -e 'disabledTestsPaths' "$package_nix_file" &
+
+          if rg --ignore-case -e 'pythonImportTests' -e 'pythonImportCheck' -e 'pythonImportTests' -e 'pythonCheckImports' "$package_nix_file"; then
+            cat <<EOF >>"$lint_check_package"
+A typo in pythonImportsCheck got detected.
+
+EOF
+          fi
+
+          if rg --ignore-case -e 'disabledTestsPaths' "$package_nix_file"; then
+            cat <<EOF >>"$lint_check_package"
+A typo in disabledTestPaths got detected.
+
+EOF
+          fi
+
+          breaksCrossCompile="$(rg --ignore-case -e 'CC=cc' -e 'CXX=c++' -e 'AR=ar' -e 'LD=cc' "$package_nix_file" || true)"
+          if [[ -n $breaksCrossCompile ]]; then
+            cat <<EOF >>"$lint_check_package"
+Using CC=cc, CXX=c++, AR=ar or LD=cc prevents cross compiling.
+Please use \`\`CC=\${stdenv.cc.targetPrefix}cc\`\`, \`\`CXX=\${stdenv.cc.targetPrefix}c++\`\`, \`\`AR=\${stdenv.cc.targetPrefix}ar\`\` or \`\`LD=\${stdenv.cc.targetPrefix}cc\`\`.
+
+EOF
+          fi
+
+          avoidableStringConversion="$(rg --ignore-case -e '= "\$\{version\}";' "$package_nix_file" || true)"
+          if [[ -n $avoidableStringConversion ]]; then
+            cat <<EOF >>"$lint_check_package"
+An avoidable string conversion got detected: \`$avoidableStringConversion\`
+Please do not convert variables to a string without modifying them but use them directly instead.
+
+EOF
+          fi
+
+          unsuitableMetaHomepageUse="$(rg --ignore-case -e '\$\{meta.homepage\}' "$package_nix_file" || true)"
+          if [[ -n $unsuitableMetaHomepageUse ]]; then
+            cat <<EOF >>"$lint_check_package"
+An unsuitable usage of meta.homepage got detected.
+Please replace it with the actual URL to not accidentially break things when the homepage gets updated.
+
+EOF
+          fi
+
+          if rg --ignore-case -e '0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5' -e '0ip26j2h11n1kgkz36rl4akv694yz65hr72q4kv4b3lxcbi65b3p' "$package_nix_file"; then
+            cat <<EOF >>"$lint_check_package"
+An empty (vendor) directory got detected.
+
+If this is a go package try replacing vendorSha256 = "0sjjj9z1dhilhpc8pq4154czrb79z9cm044jvn75kxcjv6v5l2m5";
+with vendorSha256 = null;
+
+EOF
+          fi
+        fi # package_nix_file
+
+        # check logs for common errors and display it
+        # recently included in nixpkgs-hammering
+        # shellcheck disable=SC2016
+        #       rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'Ran 0 tests in 0.000s' -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log_file" &
+
+        #       if rg --ignore-case -e 'Ran 0 tests in 0.000s' "$package_log_file"; then
+        #         cat <<EOF >>"$lint_check_package"
+        # Zero tests run by pytest got detected: 'Ran 0 tests in 0.000s'
+        # You have the following options to fix this:
+        #   - Tell pytest(CheckHook) where to find the tests included in the package
+        #   - Check if the GitHub Repo contains tests but they are not shipped with Pypi. If so please switch to \`fetchFromGitHub\`.
+        #   - If the Packages does not contain any tests add \`'doCheck = false;'\` and a \`pythonImportsCheck\`.
+
+        # EOF
+        #       fi
+
+        #       substituteCheck="$(rg --ignore-case -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log_file" || true)"
+        #       if [[ -n $substituteCheck ]]; then
+        #         cat <<EOF >>"$lint_check_package"
+        # Please consider this feature to be alpha.
+
+        # A substituteInPlace with an unmatched pattern got detected:
+        # \`\`\`
+        # $substituteCheck
+        # \`\`\`
+
+        # Please check the offending substituteInPlace for typos or changes in source.
+        # EOF
+        #       fi
+
+        # nixpkgs-hammer
+        # TODO: this should use the json output
+        if [[ $package != ccacheStdenv ]]; then
+          # if package was not directly edited be less picky with nixpkgs-hammering to avoid noise
+          #
+          # changes from the PR reviewing are staged and are compared to the relative path of the current package
+          # if the package was changed in the PR we display all picky results, if not we hide some noise
+          #
+          # disabled checks:
+          # - attribute-ordering: noisy and almost triggers for all packages
+          if [[ $(git status --porcelain) =~ ${package_nix_file#"$(realpath nixpkgs)/"} ]]; then
+            hammer_flags=(--exclude attribute-ordering --exclude no-build-output)
+          else
+            # - explicit-phases: noisy and almost triggers for all packages
+            # - no-flags-array: triggers often and is very commonly used even if half broken
+            # - missing-patch-comment: has many false positives where the filename is enough
+            # - missing-phase-hooks: has many false positives
+            hammer_flags=(--exclude attribute-ordering --exclude explicit-phases --exclude missing-patch-comment --exclude missing-phase-hooks --exclude no-build-output --exclude no-flags-array)
+          fi
+
+          # tail removes "When evaluating attribute ..."
+          # sed removes color escape codes, adds markdown code fences and replaced home path
+          hammer_out="$(cd ../nixpkgs/ && nixpkgs-hammer "${hammer_flags[@]}" "$package" 2>&1 | tail -n +2 | sed -E "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | sed -e '/^\s*|\s*$/i \\n```' -e '/^\s*|\s*\^$/a ```\n' -e "s/${PWD//\//\\\/}\///g" || echo "No issues found.")"
+
+          if [[ -n $hammer_out && ! $hammer_out =~ No\ issues\ found. ]]; then
+            # for each warning in $hammer_out, also strips them
+            # replaces the warning line with a null byte
+            # || [[ -n $warning ]] is required to display the last warning without appending a null byte
+            echo "$hammer_out" | sed -E -e "/warning: [a-z-]+/s/^/\x0/g" | while read -r -d $'\0' warning || [[ -n $warning ]]; do
+              if [[ $warning =~ has\ not\ yet\ been\ built ]]; then
+                continue
+              fi
+
+              echo "$warning" >>"$lint_check_package"
+            done
+          fi
+        fi
+
+        if [[ -f $lint_check_package ]]; then
+          {
+            cat <<EOF
+$package:
+<details>
+
+EOF
+            cat "$lint_check_package"
+            echo "</details>"
+          } >>"../$lint_check"
+          rm "$lint_check_package"
+        fi
+      done
+
+      # run commands for output in result(s)
+      if [[ -d ../result ]]; then
+        result_dir="result*"
+      elif [[ -d ../results ]]; then
+        result_dir="results/*"
+      else
+        echo "No Results directory found"
+      fi
+
+      is_object() {
+        local binary=$1
+        [[ ! -f $binary && ! "$(file --brief --mime-type "$binary")" =~ ^text/.* ]]
+      }
+
+      check_binary() {
+        local binary=$1
+
+        # if symlink or text file
+        if ! is_object "$binary"; then
+          return
+        fi
+
+        if [[ $OSTYPE =~ darwin || $(uname) == Darwin ]]; then
+          otool -L "$binary" | tail -n +2 | awk '{print $1}' | while read -r object; do
+            if [[ ! -f $object ]]; then
+              echo "Missing object found in: $binary $object"
+            fi
+          done
+        else
+          # shellcheck disable=SC2015
+          ldd "$binary" | rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" "not found" && echo "Missing object found in: $binary" || true
+        fi
+      }
+
+      check_output() {
+        # args mean we want to ignore a directory
+        if [[ $# == 3 ]]; then
+          local directory=$1
+          local ignore=$2
+          local outputs=$3
+
+          ignored="$(find -L "$result" -maxdepth 3 -type d -regextype egrep -regex "$result/$ignore" -printf 'x')"
+          # return early if the right directory does not exist
+          if ! [[ -d $result/$directory && -z $ignored ]]; then
+            return
+          fi
+        else
+          local directory=$1
+          local outputs=${2:-$1}
+
+          # return early if directory does not exist
+          if [[ ! -d $result/$directory ]]; then
+            return
+          fi
+        fi
+
+        local directory_size percentage
+
+        # ignore broken symlinks
+        directory_size=$(du -bsL "$result/$directory" 2>/dev/null | awk '{ print $1 }' || true)
+        percentage=$(echo "100 / $result_size * $directory_size" | bc -l)
+
+        # only display message if the directory is at least 1 MB and 5% of whole package
+        if [[ $directory_size -ge 1000000 ]] && echo "$percentage >= 5" | bc >/dev/null; then
+          directory_size_iec=$(numfmt --to iec --format "%8.1f" "$directory_size" | tr -d ' ')
+          echo -e "$(basename "$result"): Ask if output path \u001b[91m$directory\u001b[0m ($directory_size_iec) could be split with \u001b[36moutputs = [ ... \"$outputs\" ];\u001b[0m"
+        fi
+      }
+
+      if [[ -n ${result_dir:-} ]]; then
+        for result in ../$result_dir; do
+          if [[ -d "$result"/bin/ ]]; then
+
+            # run bloaty, ldd and otool on binaries and common library locations to check for debug or missing symbols
+            for binary in "$result"/bin/*; do
+              check_binary "$binary" &
+              # shellcheck disable=SC2015
+              if is_object "$binary"; then
+                bloaty "$binary" | rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" debug && echo "Bloaty found an unstripped binary: $binary" || true &
+              fi
+            done
+          fi
+
+          if compgen -G "$result"/lib/*.so.* >/dev/null; then
+            for binary in "$result"/lib/*.so.*; do
+              check_binary "$binary" &
+            done
+          fi
+
+          if compgen -G "$result"/libexec/* >/dev/null; then
+            for binary in "$result"/libexec/*; do
+              check_binary "$binary" &
+            done
+          fi
+
+          if compgen -G "$result"/lib/python*/site-packages/*-*.dist-info/ | rg -q "0.0.0"; then
+            echo "pythonPackages $result has version number 0.0.0 which means the packaging is most likely broken."
+          fi
+
+          # check for common missing outputs
+          result_size=$(du -bsL "$result" 2>/dev/null | awk '{ print $1 }' || true)
+          # not checking bin because it would apply to to many packages
+          #check_output bin
+          check_output include dev
+          check_output lib "(lib/ghc-.*|lib/python.*/site-packages|lib/ruby/gems)" lib
+          check_output lib/cmake dev
+          check_output lib/pkgconfig dev
+          check_output libexec lib
+          check_output share/aclocal dev
+          check_output share/doc doc
+          check_output share/gtk-doc devdoc
+          check_output share/devhelp devdoc
+          check_output share/info info
+          check_output share/man/man* share/man/man3 man
+          check_output share/man/man3 devman
+        done
+      fi
+    )
+
+    # run hydra-check on build failures and resort to show regressions clearly
+    (
+      cat <<EOF >"$report.tmp"
+This is a semi-automatic executed nixpkgs-review with [nixpkgs-review-checks extension](https://github.com/SuperSandro2000/nixpkgs-review-checks). It is checked by a human on a best effort basis and does not build all packages (e.g. lumo, tensorflow or pytorch).
+
+EOF
+      head -1 "$report" >>"$report.tmp"
+
+      for state in "marked as broken and skipped" "present in ofBorgs evaluation, but not found in the checkout" "blacklisted" "failed to build" "built"; do
+        case $state in
+          "failed to build")
+            arch=$(nix-instantiate --eval --json --expr builtins.currentSystem | jq -r)
+            packages_to_check=$(tail -n +2 "$report" | pup -i 0 ':parent-of(:contains("failed to build")) ul li text{}')
+            packages_fail_on_master=()
+            packages_fail_new=()
+
+            for package in $packages_to_check; do
+              hydra_state=$(hydra-check --arch="$arch" --channel=master --json "$package" 2>/dev/null)
+              part_of_eval_set=$(echo "$hydra_state" | jq ."\"$package\""[0].evals || echo skip)
+              state_on_master=$(echo "$hydra_state" | jq ."\"$package\""[0].success || echo skip)
+              if [[ $part_of_eval_set == true && $state_on_master == false ]]; then
+                packages_fail_on_master+=("$package")
+              else
+                # state unknown which means probably the package is new and not in master yet
+                packages_fail_new+=("$package")
+              fi
+            done
+
+            if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+              github_username=$(GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh api user | jq -r .login)
+            fi
+
+            upload_log() {
+              local package=$1
+              local url_plain gist_id
+
+              # filter home path from the error log and upload it
+              if [[ -s logs/$package.log ]]; then
+                url_plain=$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | tb)
+                echo 1
+                if [[ -n $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+                  gist_id=$(basename "$(sed -e "s/${HOME//\//\\\/}\///" "logs/$package.log" | ansi2html | GH_TOKEN=$NIXPKGS_REVIEW_GITHUB_TOKEN gh gist create --public --filename index.html 2>&1 | tail -1)")
+                fi
+              fi
+
+              echo "<li>" >>"$report.tmp"
+              if [[ -n ${url_plain:-} ]]; then
+                if [[ -z $NIXPKGS_REVIEW_GITHUB_TOKEN ]]; then
+                  echo "$package: <a href=\"$url_plain\">plain log</a>" >>"$report.tmp"
+                else
+                  echo "$package: <a href=\"$url_plain\">plain log</a>  |  <a href=\"https://htmlpreview.github.io/?https://gist.githubusercontent.com/$github_username/$gist_id/raw/index.html\">pretty log </a>" >>"$report.tmp"
+                fi
+              else
+                echo "$package: log was empty" >>"$report.tmp"
+              fi
+              echo "</li>" >>"$report.tmp"
+            }
+
+            if [[ ${#packages_fail_on_master[@]} -gt 0 ]]; then
+              if [[ ${#packages_fail_on_master[@]} -gt 1 ]]; then
+                packages_fail_on_master_plural=s
+              fi
+
+              cat <<EOF >>"$report.tmp"
+<details>
+
+  <summary>${#packages_fail_on_master[@]} package${packages_fail_on_master_plural:-} failed to build and already failed to build on hydra master:</summary>
+  <ul>
+EOF
+
+              for package in "${packages_fail_on_master[@]}"; do
+                upload_log "$package"
+              done
+              cat <<EOF >>"$report.tmp"
+  </ul>
+</details>
+EOF
+            fi
+
+            if [[ ${#packages_fail_new[@]} -gt 0 ]]; then
+              if [[ ${#packages_fail_new[@]} -gt 1 ]]; then
+                packages_fail_new_plural=s
+              fi
+
+              cat <<EOF >>"$report.tmp"
+<details>
+
+  <summary>${#packages_fail_new[@]} package${packages_fail_new_plural:-} failed to build and are new build failure${packages_fail_new_plural:-}:</summary>
+  <ul>
+EOF
+              for package in "${packages_fail_new[@]}"; do
+                upload_log "$package"
+              done
+              cat <<EOF >>"$report.tmp"
+  </ul>
+</details>
+EOF
+            fi
+            ;;
+          *)
+            # trim first two lines, add a line break to prevent EOF from pup if text is empty and extract summary
+            tail -n +2 "$report" | {
+              cat
+              echo
+            } | pup -i 0 ":parent-of(:contains(\"$state\"))" >>"$report.tmp"
+            ;;
+        esac
+      done
+
+      if [[ -f $lint_check ]]; then
+        {
+          cat <<EOF
+
+The following issues got detected with the above build packages.
+Please fix at least the ones listed with your changed packages:
+
+<details>
+EOF
+          cat "$lint_check"
+          echo "</details>"
+        } >>"$report.tmp"
+        rm "$lint_check"
+      fi
+
+      # remove extra new lines before and afer <li>
+      sed "$report.tmp" -e '/<li>/N;s/\n//' -e '/<li>/N;s/\n//' >"$report"
+      rm "$report.tmp"
+    )
+
+    mdcat report.md
+    export NIXPKGS_REVIEW_CHECKS_RUN=1
+  fi
+}
+
+export PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }_nixpkgs-review-checks-hook"
