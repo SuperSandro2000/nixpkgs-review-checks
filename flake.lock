@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1641205782,
+        "narHash": "sha256-4jY7RCWUoZ9cKD8co0/4tFARpWB+57+r1bLLvXNJliY=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "b7547d3eed6f32d06102ead8991ec52ab0a4f1a7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "locked": {
         "lastModified": 1644229661,
@@ -13,6 +29,25 @@
         "owner": "numtide",
         "repo": "flake-utils",
         "type": "github"
+      }
+    },
+    "naersk": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1639947939,
+        "narHash": "sha256-pGsM8haJadVP80GFq4xhnSpNitYNQpaXk4cnA796Cso=",
+        "owner": "nix-community",
+        "repo": "naersk",
+        "rev": "2fc8ce9d3c025d59fee349c1f80be9785049d653",
+        "type": "github"
+      },
+      "original": {
+        "id": "naersk",
+        "type": "indirect"
       }
     },
     "nixpkgs": {
@@ -30,10 +65,39 @@
         "type": "github"
       }
     },
+    "nixpkgs-hammering": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "naersk": [
+          "naersk"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "utils": [
+          "flake-utils"
+        ]
+      },
+      "locked": {
+        "lastModified": 1647744458,
+        "narHash": "sha256-DK1kfMVS88eqYAnIjvYMInECVuWCe4MUTtUIpVhLQGk=",
+        "owner": "jtojnar",
+        "repo": "nixpkgs-hammering",
+        "rev": "0c54b7121a21f79e580773a46fc8d51482dc1d1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jtojnar",
+        "repo": "nixpkgs-hammering",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "naersk": "naersk",
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-hammering": "nixpkgs-hammering"
       }
     }
   },

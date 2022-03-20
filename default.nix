@@ -23,6 +23,8 @@ stdenv.mkDerivation rec {
     gnused
     hydra-check
     mdcat
+    nix
+    nixpkgs-hammering
     jq
     pup
     python3Packages.ansi2html
