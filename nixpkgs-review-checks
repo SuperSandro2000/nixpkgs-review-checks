@@ -6,15 +6,6 @@ tb() {
   tail -20000 | nc termbin.com 9999
 }
 
-nixpkgs-hammer() {
-  if [[ -e ${NIXPKGS_HAMMER_BIN:-} ]]; then
-    $NIXPKGS_HAMMER_BIN "$@"
-  else
-    nix shell -f "${NIXPKGS_HAMMER_ARCHIVE:-https://github.com/jtojnar/nixpkgs-hammering/archive/master.tar.gz}" -c nixpkgs-hammer "$*"
-  fi
-}
-
-
 # If already in the nix-shell start the check code otherwise run nixpkgs-review
 if [[ ${name:-} == review-shell && -z ${NIXPKGS_REVIEW_CHECKS_RUN:-} ]]; then
   lint_check=lint_checks.tmp

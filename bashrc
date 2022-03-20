@@ -126,7 +126,8 @@ nixpkgs-review() {
           }
           local review_command="command nixpkgs-review $command $flags"
 
-          if check bc && check bloaty && check coreutils && check curl && check gawk && check gh && check sed && check hydra-check && check mdcat && check jp && check pup && ansi2html && check rg && savepagenow; then
+          if check ansi2html && check bc && check bloaty && check coreutils && check curl && check gawk && check gh && check sed && check hydra-check && check mdcat &&
+            check nixpkgs-hammer && check jp && check pup && check rg && check savepagenow; then
             $review_command
           else
             nix_shell=nix-shell
