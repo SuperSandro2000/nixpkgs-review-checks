@@ -46,8 +46,9 @@
         "type": "github"
       },
       "original": {
-        "id": "naersk",
-        "type": "indirect"
+        "owner": "nix-community",
+        "repo": "naersk",
+        "type": "github"
       }
     },
     "nixpkgs": {

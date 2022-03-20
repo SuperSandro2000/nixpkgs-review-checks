@@ -18,7 +18,7 @@
     };
   };
 
-  outputs = { self, flake-utils, nixpkgs, nixpkgs-hammering }:
+  outputs = { self, flake-utils, naersk, nixpkgs, nixpkgs-hammering }:
     flake-utils.lib.eachDefaultSystem (system: {
       packages.nixpkgs-review-checks = nixpkgs.legacyPackages.${system}.callPackage self {
         src = self;
