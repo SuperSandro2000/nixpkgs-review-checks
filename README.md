@@ -35,10 +35,10 @@ Add additional checks and more information from build logs and outputs to the re
 
 Optionally you can install [cached-nix-shell](https://github.com/xzfc/cached-nix-shell) to speedup the start of nixpkgs-review.
 
-- Source `bashrc` in your `~/.bashrc`.
+- Source `nixpkgs-review-checks-hook` in your `~/.bashrc`.
 
 ```bash
-source ~/source/nixpkgs-review-checks/bashrc
+source ~/source/nixpkgs-review-checks/nixpkgs-review-checks-hook
 ```
 
 ### Invoke nixpkgs-review-checks (Alpha)
