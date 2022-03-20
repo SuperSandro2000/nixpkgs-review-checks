@@ -12,7 +12,10 @@
       };
     };
     flake-utils.url = "github:numtide/flake-utils";
-    naersk.inputs.nixpkgs.follows = "nixpkgs";
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, flake-utils, nixpkgs, nixpkgs-hammering }:
