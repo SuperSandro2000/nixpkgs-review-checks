@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # source this in your .bashrc
-set -eou pipefail
 
 tb() {
   # only upload the last 20000 lines to keep below ~2 MB
