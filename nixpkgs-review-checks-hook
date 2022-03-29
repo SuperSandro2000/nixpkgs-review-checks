@@ -26,9 +26,9 @@ _nixpkgs-review-checks-hook() {
 
     # save or restore a backup of original report for debugging
     if [[ -f $report.orig ]]; then
-      cp "$report.orig" "$report"
+      command cp "$report.orig" "$report"
     else
-      cp "$report" "$report.orig"
+      command cp "$report" "$report.orig"
     fi
 
     (
