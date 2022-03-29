@@ -38,7 +38,7 @@ _nixpkgs-review-checks-hook() {
         package="${package_log_file%.*}"
         lint_check_package=../lint_checks.$package.tmp
 
-        missingMeta="$(nix-instantiate --eval -E "(import ./. { }).pkgs.$package.meta.description" || true)"
+        missingMeta="$(nix-instantiate --eval -E "(import ../nixpkgs/ { }).pkgs.$package.meta.description" || true)"
         if [[ -n $missingMeta ]]; then
           cat <<EOF >>"$lint_check_package"
 Package is missing a meta section.
