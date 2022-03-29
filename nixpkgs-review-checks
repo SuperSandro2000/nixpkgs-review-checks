@@ -11,33 +11,35 @@ else
         correct_dir=false
 
         if [[ -d nixpkgs ]]; then
-          cd nixpkgs || return=$? && return=$?
+          cd nixpkgs
+          return=$?
           correct_dir=true
           if [[ $return -eq 0 ]]; then
             correct_dir=true
           else
             echo "Can't cd nixpkgs"
-            return
+            exit
           fi
         fi
 
         if [[ $correct_dir == "false" && -d "../nixpkgs" ]]; then
-          cd ../nixpkgs || return=$? && return=$?
+          cd ../nixpkgs
+          return=$?
           if [[ $return -eq 0 ]]; then
             correct_dir=true
           else
             echo "Can't cd nixpkgs"
-            return
+            exit
           fi
         fi
         if [[ ! -d pkgs ]]; then
           echo "Not in nixpkgs. Aborting"
-          return
+          exit
         fi
 
         if [[ -n $(git diff --name-only 2>&1) ]]; then
           echo "There are unstaged files. Not leaving review-shell as long they are present!"
-          return
+          exit
         else
           cd ..
         fi
@@ -45,7 +47,7 @@ else
         # skip posting reports without any summary which means no packages where build
         if [[ -z $(rg -co summary report.md) ]]; then
           echo -e "Report does not contain any \u001b[36msummary\u001b[0m. Report was not posted."
-          return
+          exit
         fi
 
         # skip posting reports if ofborg already build this exact package
@@ -55,12 +57,12 @@ else
         # report contains one summary, one package was build and ofborg reported success for building this package
         if [[ $(rg -co '</summary>' report.md) == 1 && $(rg -co "1 package built:" report.md) == 1 && -z $(rg -co "following issues got" report.md) && $ofborg_state == SUCCESS ]]; then
           echo -e "This report only contains one package build and ofborg already tested this. Report was not posted."
-          return
+          exit
         fi
 
         if [[ $(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .state) == closed ]]; then
           echo -e "The PR is already \u001b[36mmerged/closed\u001b[0m. Report was not posted."
-          return
+          exit
         fi
 
         author=$(gh api /repos/nixos/nixpkgs/pulls/"$PR" | jq -r .user.login)
@@ -72,11 +74,11 @@ else
         if [[ " ${blocklist[*]} " =~ " $author " ]]; then
           if ! rg failed report.md &>/dev/null; then
             echo -e "Report does not contain any \u001b[36mfailed\u001b[0m builds. Report was not posted."
-            return
+            exit
           fi
         fi
 
-        if [[ -n $NIXPKGS_REVIEW_CHECKS_DEBUG ]]; then
+        if [[ -n ${NIXPKGS_REVIEW_CHECKS_DEBUG:-} ]]; then
           echo -e "\u001b[36mDEBUG\u001b[0m: Would post the report."
         else
           command nixpkgs-review "$@" && exit
@@ -113,7 +115,7 @@ else
       (
         nixpkgs=${NIXPKGS_REVIEW_CHECKS_SOURCE:-$HOME/src/nixpkgs}
         if [[ -d $nixpkgs ]]; then
-          cd "$nixpkgs" || return
+          cd "$nixpkgs" || exit
         fi
 
         check() {
