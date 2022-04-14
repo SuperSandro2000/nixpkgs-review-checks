@@ -114,10 +114,6 @@ else
 
       (
         nixpkgs=${NIXPKGS_REVIEW_CHECKS_SOURCE:-$HOME/src/nixpkgs}
-        if [[ -d $nixpkgs ]]; then
-          cd "$nixpkgs" || exit
-        fi
-
         check() {
           type -P "$1"
         }
@@ -125,14 +121,19 @@ else
 
         if check ansi2html && check bc && check bloaty && check coreutils && check curl && check gawk && check gh && check jq && check sed && check hydra-check && check mdcat &&
           check nixpkgs-hammer && check pup && check rg && check savepagenow; then
+          if [[ -d $nixpkgs ]]; then
+            cd "$nixpkgs" || exit
+          fi
           $review_command
         else
           nix_shell=nix-shell
           if type -P cached-nix-shell &>/dev/null; then
             nix_shell=cached-nix-shell
           fi
-
-          $nix_shell -I nixpkgs="$nixpkgs" "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/shell.nix" --run "$review_command"
+          if [[ ! -d $nixpkgs ]]; then
+            exit
+          fi
+          $nix_shell -I nixpkgs="$nixpkgs" "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/shell.nix" --run "cd $nixpkgs && $review_command"
         fi
       )
       ;;
