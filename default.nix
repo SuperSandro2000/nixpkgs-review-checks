@@ -35,6 +35,7 @@ stdenv.mkDerivation rec {
     mdcat
     nix
     nixpkgs-hammering
+    nixpkgs-review
     jq
     pup
     python3Packages.ansi2html
