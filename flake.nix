@@ -30,6 +30,7 @@
           ];
           inherit system;
         };
+        inherit system;
       };
       defaultPackage = self.packages.${system}.nixpkgs-review-checks;
     });

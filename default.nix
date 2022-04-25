@@ -1,4 +1,5 @@
 { pkgs ? import <nixpkgs> { }
+, system ? builtins.currentSystem
 , src ? ./.
 }:
 
@@ -13,7 +14,7 @@ let
       sha256 = lock.nodes.nixpkgs-hammering.locked.narHash;
     }
   # TODO: make multiplatform
-  )).defaultPackage."x86_64-linux";
+  )).defaultPackage."${system}";
 in
 stdenv.mkDerivation rec {
   name = "nixpkgs-review-checks";
