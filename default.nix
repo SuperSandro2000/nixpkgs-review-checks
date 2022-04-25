@@ -5,14 +5,15 @@
 with pkgs;
 
 let
-  nixpkgs-hammering = import (
+  nixpkgs-hammering = (import (
     let
       lock = builtins.fromJSON (builtins.readFile ./flake.lock); in
     fetchTarball {
       url = "https://github.com/jtojnar/nixpkgs-hammering/archive/${lock.nodes.nixpkgs-hammering.locked.rev}.tar.gz";
       sha256 = lock.nodes.nixpkgs-hammering.locked.narHash;
     }
-  );
+  # TODO: make multiplatform
+  )).defaultPackage."x86_64-linux";
 in
 stdenv.mkDerivation rec {
   name = "nixpkgs-review-checks";
