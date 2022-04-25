@@ -119,7 +119,12 @@ else
         fi
 
         check() {
-          type -P "$1"
+          if type -P "$1" >/dev/null; then
+            return 0
+          else
+            echo "Did not find $1, switching to nix-shell"
+            return 1
+          fi
         }
         review_command="command nixpkgs-review $command $flags"
 
