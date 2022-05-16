@@ -14,7 +14,7 @@ let
       sha256 = lock.nodes.nixpkgs-hammering.locked.narHash;
     }
   # TODO: make multiplatform
-  )).defaultPackage."${system}";
+  )).packages."${system}".default;
 in
 stdenv.mkDerivation rec {
   name = "nixpkgs-review-checks";

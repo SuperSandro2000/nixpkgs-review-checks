@@ -25,7 +25,7 @@
         pkgs = import nixpkgs {
           overlays = [
             (prev: final: {
-              nixpkgs-hammering = nixpkgs-hammering.defaultPackage."${system}";
+              nixpkgs-hammering = nixpkgs-hammering.packages."${system}".default;
             })
           ];
           inherit system;
