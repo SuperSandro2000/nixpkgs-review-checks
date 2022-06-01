@@ -107,36 +107,6 @@ EOF
           fi
         fi # package_nix_file
 
-        # check logs for common errors and display it
-        # recently included in nixpkgs-hammering
-        # shellcheck disable=SC2016
-        #       rg --ignore-case --colors "match:bg:yellow" --colors "match:fg:magenta" -e 'Ran 0 tests in 0.000s' -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log_file" &
-
-        #       if rg --ignore-case -e 'Ran 0 tests in 0.000s' "$package_log_file"; then
-        #         cat <<EOF >>"$lint_check_package"
-        # Zero tests run by pytest got detected: 'Ran 0 tests in 0.000s'
-        # You have the following options to fix this:
-        #   - Tell pytest(CheckHook) where to find the tests included in the package
-        #   - Check if the GitHub Repo contains tests but they are not shipped with Pypi. If so please switch to \`fetchFromGitHub\`.
-        #   - If the Packages does not contain any tests add \`'doCheck = false;'\` and a \`pythonImportsCheck\`.
-
-        # EOF
-        #       fi
-
-        #       substituteCheck="$(rg --ignore-case -e "substituteStream\(\): WARNING: pattern (.*?) doesn't match anything in file '(.*?)'" "$package_log_file" || true)"
-        #       if [[ -n $substituteCheck ]]; then
-        #         cat <<EOF >>"$lint_check_package"
-        # Please consider this feature to be alpha.
-
-        # A substituteInPlace with an unmatched pattern got detected:
-        # \`\`\`
-        # $substituteCheck
-        # \`\`\`
-
-        # Please check the offending substituteInPlace for typos or changes in source.
-        # EOF
-        #       fi
-
         # nixpkgs-hammer
         # TODO: this should use the json output
         if [[ $package != ccacheStdenv ]]; then
