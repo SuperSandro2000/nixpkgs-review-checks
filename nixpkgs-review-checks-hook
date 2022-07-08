@@ -255,7 +255,20 @@ EOF
           fi
 
           if compgen -G "$result"/lib/python*/site-packages/*-*.dist-info/ | rg -q "0.0.0"; then
-            echo "pythonPackages $result has version number 0.0.0 which means the packaging is most likely broken."
+            cat <<EOF >>"$lint_check_package"
+The python package $result has version number 0.0.0 which means the packaging is most likely broken.
+
+Is the package using setuptool-scm and it is missing in nativeBuildInputs?
+
+EOF
+          fi
+
+          if compgen -G "$result"/share/bash_completion.d/*; then
+            cat <<EOF >>"$lint_check_package"
+bash-completions are installed into \$out/share/bash_completion.d/ which is incompatible with home-manager.
+
+Please use installShellCompletion from the installShellFiles package to place the files under \$out/share/bash-completion/completions/ .
+EOF
           fi
 
           # check for common missing outputs
