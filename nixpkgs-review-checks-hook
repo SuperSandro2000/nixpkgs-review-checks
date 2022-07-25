@@ -250,6 +250,7 @@ EOF
 
           if compgen -G "$result"/libexec/* >/dev/null; then
             for binary in "$result"/libexec/*; do
+              [[ -d $binary ]] && continue
               check_binary "$binary" &
             done
           fi
