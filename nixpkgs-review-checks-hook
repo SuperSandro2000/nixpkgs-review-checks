@@ -422,6 +422,10 @@ EOF
     )
 
     mdcat report.md
+
+    if [[ -n ${NIXPKGS_REVIEW_CHECKS_DEBUG:-} ]]; then
+      set +x
+    fi
     export NIXPKGS_REVIEW_CHECKS_RUN=1
   fi
 }
