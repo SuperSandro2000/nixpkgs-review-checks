@@ -47,9 +47,11 @@ stdenv.mkDerivation rec {
 
   installPhase = ''
     install -Dm755 nixpkgs-review-checks -t $out/bin
-    wrapProgram $out/bin/nixpkgs-review-checks \
-      --prefix PATH : ${lib.makeBinPath buildInputs}
     install -Dm755 nixpkgs-review-checks-hook -t $out/etc/profile.d
+    install -Dm755 ofborg.graphql -t $out/share/nixpkgs-review-checks
+    wrapProgram $out/bin/nixpkgs-review-checks \
+      --prefix PATH : ${lib.makeBinPath buildInputs} \
+      --set NIXPKGS_REVIEW_CHECKS_GRAPHQL_FILE $out/share/nixpkgs-review-checks/ofborg.graphql
   '';
 
   passthru.env = buildEnv { inherit name; paths = buildInputs; };
