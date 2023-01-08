@@ -38,13 +38,23 @@ _nixpkgs-review-checks-hook() {
         package="${package_log_file%.*}"
         lint_check_package=../lint_checks.$package.tmp
 
-        missingMeta="$(nix-instantiate --eval -E "(import ../nixpkgs { }).pkgs.$package.meta.description" || true)"
+        missingMeta="$(nix-instantiate --eval -E "(import ../nixpkgs { }).pkgs.$package.meta" || true)"
         if [[ -z $missingMeta ]]; then
           cat <<EOF >>"$lint_check_package"
 Package is missing a meta section.
 If the package is using runCommand please make sure to inherit or create a meta section.
 
 EOF
+        else
+          # Get the first one to ensure the list is not empty
+          missingMaintainers="$(nix-instantiate --eval -E "builtins.head (import ../nixpkgs { }).pkgs.$package.meta.maintainers" || true)"
+          if [[ -z $missingMaintainers ]]; then
+            cat <<EOF >>"$lint_check_package"
+Package is missing maintainers.
+If the package is using runCommand please make sure to inherit or list one or more maintainers.
+
+EOF
+          fi
         fi
 
         package_nix_file="$(cd ../nixpkgs && EDITOR="echo" nix edit -f . "$package" 2>/dev/null || echo skip)"
