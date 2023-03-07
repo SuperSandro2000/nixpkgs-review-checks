@@ -10,6 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v20
-      - uses: DeterminateSystems/update-flake-lock@v16
+      - uses: DeterminateSystems/update-flake-lock@v17
         with:
           token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
