@@ -28,7 +28,7 @@ Add additional checks and more information from build logs and outputs to the re
   - hydra-check
   - mdcat
   - nix
-  - nixpkgs-hammer
+  - nixpkgs-hammering
   - pup
   - ripgrep
   - savepagenow
