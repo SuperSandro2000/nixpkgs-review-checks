@@ -3,27 +3,15 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-hammering = {
-      url = "github:jtojnar/nixpkgs-hammering";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        utils.follows = "flake-utils";
-      };
-    };
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, flake-utils, nixpkgs, nixpkgs-hammering }:
+  outputs = { self, flake-utils, nixpkgs }:
     flake-utils.lib.eachDefaultSystem (system: {
       packages = {
         nixpkgs-review-checks = nixpkgs.legacyPackages.${system}.callPackage self {
           src = self;
-          pkgs = import nixpkgs {
-            overlays = [
-              nixpkgs-hammering.overlays.default
-            ];
-            inherit system;
-          };
+          pkgs = import nixpkgs { inherit system; };
         };
 
         default = self.packages.${system}.nixpkgs-review-checks;

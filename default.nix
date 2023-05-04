@@ -1,18 +1,4 @@
-{ pkgs ? import <nixpkgs> {
-    overlays = [
-      (final: prev: {
-        nixpkgs-hammering = (import (
-          let
-            lock = builtins.fromJSON (builtins.readFile ./flake.lock);
-          in
-          fetchTarball {
-            url = "https://github.com/jtojnar/nixpkgs-hammering/archive/${lock.nodes.nixpkgs-hammering.locked.rev}.tar.gz";
-            sha256 = lock.nodes.nixpkgs-hammering.locked.narHash;
-          }
-        )).packages."${final.system}".default;
-      })
-    ];
-  }
+{ pkgs ? import <nixpkgs> { }
 , src ? ./.
 }:
 
