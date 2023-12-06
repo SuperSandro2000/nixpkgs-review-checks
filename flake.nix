@@ -11,7 +11,7 @@
       packages = {
         nixpkgs-review-checks = nixpkgs.legacyPackages.${system}.callPackage self {
           src = self;
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = nixpkgs.legacyPackages.${system};
         };
 
         default = self.packages.${system}.nixpkgs-review-checks;
