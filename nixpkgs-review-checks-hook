@@ -440,4 +440,4 @@ EOF
   fi
 }
 
-export PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }_nixpkgs-review-checks-hook"
+export PROMPT_COMMAND="${PROMPT_COMMAND}${PROMPT_COMMAND:+;}_nixpkgs-review-checks-hook"
