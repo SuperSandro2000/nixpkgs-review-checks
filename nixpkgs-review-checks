@@ -7,7 +7,7 @@ else
   case "${1:-}" in
     "post-result")
       # shellcheck disable=SC2154
-      if [[ $name == name=review-shell || -v PR ]]; then
+      if [[ ${name:-} == name=review-shell || -v PR ]]; then
         correct_dir=false
 
         if [[ -d nixpkgs ]]; then
