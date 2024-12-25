@@ -35,7 +35,7 @@ _nixpkgs-review-checks-hook() {
       # run commands for each package build
       cd logs/ 2>/dev/null || exit
       for package_log_file in *.log; do
-        package="${package_log_file%.*}"
+        package=$(echo $package_log_file | sed -nE "s/(.*?)-(x86_64-linux|aarch64-linux|x86_64-darwin|aarch64-darwin).log/\1/p")
         lint_check_package=../lint_checks.$package.tmp
 
         missingMeta="$(nix-instantiate --eval -E "(import ../nixpkgs { }).pkgs.$package.meta" || true)"
